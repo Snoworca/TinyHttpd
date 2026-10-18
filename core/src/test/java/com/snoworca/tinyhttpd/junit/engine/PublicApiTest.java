@@ -101,6 +101,7 @@ public class PublicApiTest extends EngineTestBase {
         assertEquals(2000, c.getIdleTimeoutUnderLoad());
         assertEquals(10000, c.getHeaderTimeout());
         assertEquals(30000, c.getBodyReadTimeout());
+        assertEquals(0, c.getMinRequestBodyRate());
         assertEquals(30000, c.getWriteTimeout());
         assertEquals(64, c.getMaxWorkers());
         assertEquals(128, c.getMaxConnections());

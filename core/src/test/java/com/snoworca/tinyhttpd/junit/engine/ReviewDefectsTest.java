@@ -182,6 +182,38 @@ public class ReviewDefectsTest extends EngineTestBase {
         }
     }
 
+    /** Off by default: a body trickling past the 5 s grace still completes with 200, no 408. */
+    @Test
+    public void slowBodyIsAcceptedByDefault() throws Exception {
+        routes.put("/up", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) throws IOException {
+                java.io.InputStream in = req.getInputStream();
+                int total = 0;
+                while (in.read() >= 0) {
+                    total++;
+                }
+                text(res, Integer.toString(total));
+            }
+        });
+        start();
+        RawConnection c = connect();
+        try {
+            c.setReadTimeout(15000);
+            c.send("POST /up HTTP/1.1\r\nHost: x\r\nContent-Length: 13\r\n\r\n");
+            for (int i = 0; i < 13; i++) { // 2 bytes per second for 6.5 s
+                c.send("b");
+                Thread.sleep(500);
+            }
+            RawResponse r = c.read();
+            assertEquals(200, r.status());
+            assertEquals("13", r.body);
+        } finally {
+            c.close();
+        }
+    }
+
     /** Only time spent waiting on the client counts: a handler that reads slowly is not the client's fault. */
     @Test
     public void slowHandlerIsNotASlowClient() throws Exception {

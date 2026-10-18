@@ -254,7 +254,7 @@ public final class TinyHttpd {
         int idleTimeoutUnderLoad = 2000;
         int headerTimeout = 10000;
         int bodyReadTimeout = 30000;
-        int minRequestBodyRate = 240;
+        int minRequestBodyRate = 0;
         int writeTimeout = 30000;
         int queueWaitTimeout = 5000;
         int workerKeepAlive = 60000;
@@ -539,7 +539,8 @@ public final class TinyHttpd {
          * Slow-body guard: once the server has waited 5 s in total for request body bytes, a body arriving slower than
          * this is answered with 408. Only time spent waiting on the client counts, not the handler's own pace.
          *
-         * @param value minimum request body rate in bytes per second, 0 for none; default 240
+         * @param value minimum request body rate in bytes per second, 0 for none; default 0 (off). 240 is a lenient
+         *        setting for servers reachable from the Internet
          * @return this builder
          */
         public Builder minRequestBodyRate(int value) {
