@@ -76,6 +76,8 @@ project(':tinyhttpd-core') {
         }
         // -Dfuzz.cases=10000 runs the full parser fuzz (P1-14); CI uses the default 1,000.
         systemProperties System.getProperties().findAll { it.key.toString().startsWith('fuzz.') }
+        // TLS-02: lets the JDK speak TLS 1.0 so the test shows TinyHttpd's defaults refuse it.
+        systemProperty 'java.security.properties', file('src/test/resources/tls-test.security').absolutePath
     }
 
     tasks.register('knownDefectTest', Test) {

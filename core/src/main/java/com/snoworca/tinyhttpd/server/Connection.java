@@ -63,6 +63,9 @@ final class Connection {
 
     volatile boolean writeTimedOut;
 
+    /** A socket write failed; nothing more is written, not even TLS close_notify (P2-05, P7-06). */
+    private boolean writeFailed;
+
     volatile SseStream eventStream;
 
     volatile Upgraded upgraded;
@@ -142,6 +145,9 @@ final class Connection {
             phaseSince = now;
             deadline = now + cfg.headerTimeout;
             Exchange ex = new Exchange(this);
+            if (socket != raw) {
+                Tls.setAttributes(this, ex);
+            }
             try {
                 RequestParser.parse(this, ex);
             } catch (ParseError e) {
@@ -230,11 +236,15 @@ final class Connection {
 
     /** Writes to the socket under the watchdog's write timeout. */
     void write(byte[] b, int off, int len) throws IOException {
+        if (writeFailed) {
+            throw new IOException("an earlier write failed");
+        }
         writeSince = System.currentTimeMillis();
         try {
             out.write(b, off, len);
             server.socketWrites.incrementAndGet();
         } catch (IOException e) {
+            writeFailed = true;
             if (writeTimedOut) {
                 throw new SocketTimeoutException("write timed out");
             }
@@ -248,6 +258,9 @@ final class Connection {
         writeSince = System.currentTimeMillis();
         try {
             out.flush();
+        } catch (IOException e) {
+            writeFailed = true;
+            throw e;
         } finally {
             writeSince = 0;
         }
@@ -371,10 +384,11 @@ final class Connection {
 
     private void close() {
         phase.set(CLOSING);
-        HttpServer.closeQuietly(socket);
-        if (socket != raw) {
-            HttpServer.closeQuietly(raw);
+        if (socket != raw && !writeFailed) {
+            writeSince = System.currentTimeMillis(); // close_notify is a write the watchdog may need to abort
+            HttpServer.closeQuietly(socket);
         }
+        HttpServer.closeQuietly(raw);
     }
 
     /** Closes the plain socket from another thread; never blocks (no TLS close_notify). */

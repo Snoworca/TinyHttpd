@@ -14,7 +14,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
+import com.snoworca.tinyhttpd.TinyHttpd;
 import com.snoworca.tinyhttpd.testing.RawConnection;
+import com.snoworca.tinyhttpd.testing.TestTls;
 import com.snoworca.tinyhttpd.testing.RawConnection.RawResponse;
 import com.snoworca.tinyhttpd.testing.ThreadCpu;
 
@@ -31,9 +33,12 @@ public class KeepAliveDefectTest {
 
     private int port;
 
+    /** Runs the suite over TLS; set by {@link KeepAliveDefectTlsTest} (P7-08). */
+    protected boolean tls;
+
     @Before
     public void startServer() throws IOException {
-        server = new ProbeServer();
+        server = new ProbeServer(tls ? TinyHttpd.builder().tls(TestTls.server().build()) : TinyHttpd.builder());
         server.start();
         port = server.port();
     }
@@ -43,10 +48,14 @@ public class KeepAliveDefectTest {
         server.stop();
     }
 
+    private RawConnection connect() throws IOException {
+        return new RawConnection(port, 0, tls ? TestTls.socketFactory() : null);
+    }
+
     /** KA-01: a body the handler never reads must not be parsed as the next request (upstream #314, #217). */
     @Test
     public void ka01_unreadBodyIsDrainedBeforeNextRequest() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("POST /ignore-body HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\nAAAAAAAAAA");
             assertEquals(200, c.read().status());
@@ -62,7 +71,7 @@ public class KeepAliveDefectTest {
     /** KA-02: a HEAD response must not carry a body (RFC 7230 §3.3), or the next response is corrupted. */
     @Test
     public void ka02_headResponseHasNoBody() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("HEAD /hello HTTP/1.1\r\nHost: x\r\n\r\n");
             RawResponse head = c.read(true);
@@ -79,7 +88,7 @@ public class KeepAliveDefectTest {
     /** KA-03: HEAD of a chunked resource must neither send the body nor a negative Content-Length. */
     @Test
     public void ka03_headOfChunkedResourceHasNoBodyAndNoNegativeLength() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("HEAD /chunked HTTP/1.1\r\nHost: x\r\n\r\n");
             RawResponse head = c.read(true);
@@ -98,7 +107,7 @@ public class KeepAliveDefectTest {
      */
     @Test
     public void ka04_chunkedRequestBodyIsConsumed() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("POST /parse HTTP/1.1\r\nHost: x\r\nContent-Type: text/plain\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n");
             RawResponse first = c.read();
@@ -120,7 +129,7 @@ public class KeepAliveDefectTest {
      */
     @Test
     public void ka05_shortFixedLengthBodyClosesConnection() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET /short HTTP/1.1\r\nHost: x\r\n\r\n");
             RawResponse r = c.read(true);
@@ -137,7 +146,7 @@ public class KeepAliveDefectTest {
     public void ka06_oversizedHeaderIsRejected() throws Exception {
         char[] filler = new char[16 * 1024];
         Arrays.fill(filler, 'a');
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         RawResponse r;
         try {
             c.send("GET /hello HTTP/1.1\r\nHost: x\r\nX-Big: " + new String(filler) + "\r\n\r\n");
@@ -154,7 +163,7 @@ public class KeepAliveDefectTest {
     /** KA-07: a client that sends a partial header and disconnects must not leave a spinning worker (upstream #529). */
     @Test
     public void ka07_partialHeaderThenDisconnectDoesNotSpin() throws Exception {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         c.send("GET /hello HTTP/1.1\r\n");
         Thread.sleep(200);
         c.close();
@@ -165,7 +174,7 @@ public class KeepAliveDefectTest {
     /** KA-08: when the server closes after an error response, the response must say so. */
     @Test
     public void ka08_errorResponseAnnouncesClose() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET\r\nHost: x\r\n\r\n");
             RawResponse r = c.read();
@@ -179,7 +188,7 @@ public class KeepAliveDefectTest {
     /** KA-09: HTTP/1.0 clients that ask for keep-alive explicitly may keep the connection (RFC 7230 §6.3). */
     @Test
     public void ka09_http10KeepAliveIsHonored() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET /hello HTTP/1.0\r\nConnection: keep-alive\r\n\r\n");
             RawResponse r = c.read();
@@ -198,7 +207,7 @@ public class KeepAliveDefectTest {
      */
     @Test
     public void ka10_requestBodyStreamEndsAtContentLength() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             long start = System.currentTimeMillis();
             c.send("POST /read-all HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\n\r\nhello");
@@ -214,7 +223,7 @@ public class KeepAliveDefectTest {
     /** KA-11: an unparsable Content-Length is a 400, not a dropped connection without a response. */
     @Test
     public void ka11_invalidContentLengthIsBadRequest() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("POST /parse HTTP/1.1\r\nHost: x\r\nContent-Length: abc\r\n\r\n");
             assertEquals(400, c.read().status());
@@ -229,7 +238,7 @@ public class KeepAliveDefectTest {
         List<RawConnection> idle = new ArrayList<RawConnection>();
         try {
             for (int i = 0; i < 100; i++) {
-                RawConnection c = new RawConnection(port);
+                RawConnection c = connect();
                 c.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
                 c.read();
                 idle.add(c);
@@ -249,7 +258,7 @@ public class KeepAliveDefectTest {
      */
     @Test
     public void ka13_requestWithoutLengthHasEmptyBody() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET /parse HTTP/1.1\r\nHost: x\r\n\r\nGET /second HTTP/1.1\r\nHost: x\r\n\r\n");
             assertEquals("parsed 0", c.read().body);
@@ -268,7 +277,7 @@ public class KeepAliveDefectTest {
         byte[] head = "GET /hello HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n".getBytes(RawConnection.ASCII);
         byte[] junk = new byte[256 * 1024];
         Arrays.fill(junk, (byte) 'x');
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send(head);
             try {
@@ -287,7 +296,7 @@ public class KeepAliveDefectTest {
     /** KA-15: a client that sends Expect: 100-continue waits for 100 Continue before sending the body (RFC 7231 §5.1.1). */
     @Test
     public void ka15_expectContinueGetsInterimResponse() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("POST /parse HTTP/1.1\r\nHost: x\r\nContent-Type: text/plain\r\nContent-Length: 5\r\nExpect: 100-continue\r\n\r\n");
             RawResponse interim = c.read(true);
@@ -302,7 +311,7 @@ public class KeepAliveDefectTest {
     /** KA-16: per-request state must not leak into the next request on the same connection (upstream #311, #596). */
     @Test
     public void ka16_queryStringDoesNotLeakIntoNextRequest() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET /query?secret=1 HTTP/1.1\r\nHost: x\r\n\r\n");
             assertEquals("query=secret=1", c.read().body);

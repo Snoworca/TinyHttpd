@@ -82,7 +82,7 @@ P4는 P1에서 만든 API 골격을 완성하는 단계다. 골격(인터페이�
 | R-09 | servlet-api.md §4.2 `sendFile` 스케치 | `sendFile(FileChannel…)`, `FileResource` 추가. transferTo 문장은 P5-04 결정에 맞춤 | P5-05 | `[ ]` |
 | R-10 | servlet-api.md §4.2 "Range 파싱은 webserver" | core `FileResponses`로 | P5-06 | `[ ]` |
 | R-11 | servlet-api.md §4.2 `EventStream`, 예제 | `awaitClosed` 추가, `hub.awaitClose` → `es.awaitClosed` | P6-03 | `[ ]` |
-| R-12 | core-analysis.md §2.3 "TLS 별도 연구(예정)" | `tls.md` 링크 | P7-01 | `[ ]` |
+| R-12 | core-analysis.md §2.3 "TLS 별도 연구(예정)" | `tls.md` 링크 | P7-01 | `[x]` |
 | R-13 | CLAUDE.md "테스트 규칙"의 `junit/keepalive/RawConnection` 경로 | testFixtures 경로로 | P0-04 | `[x]` |
 | R-14 | CLAUDE.md "저장소 구성"의 "클래스명은 아직 원본 그대로" | 삭제 | P8-05 | `[ ]` |
 
@@ -115,7 +115,7 @@ P4는 P1에서 만든 API 골격을 완성하는 단계다. 골격(인터페이�
 | multipart 파서 버퍼 / `maxPartHeaderBytes` | 16 KB / 8 KB | `MultipartLimits` | P5 | 구 코드 1 KB에서 확대 |
 | `maxEventStreams` | 64 | core 빌더 | P6 | 동시 사용자 50명이 탭 하나씩 연결하는 경우(servlet-api.md §6). 2차 검토에서 8에서 올림 |
 | `eventQueueEvents` / `eventQueueBytes` | 64개 / 64 KB | core 빌더 | P6 | 이 계획에서 정함 |
-| `handshakeTimeout` / TLS 세션 캐시 | 10 s / P7-01 결과로 정함 | `TlsConfig` | P7 | core-analysis.md §2.3 |
+| `handshakeTimeout` / TLS 세션 캐시 | 10 s / 128개, 3600 s (tls.md) | `TlsConfig` | P7 | core-analysis.md §2.3 |
 | `maxUpgradedConnections` | 16 | core 빌더 | P8 | servlet-api.md §5 |
 | `maxFramePayloadBytes` / `maxMessageBytes` / `wsPingInterval` | 1 MB / 1 MB / 30 s | `WebSocketHandler` | P8 | 이 계획에서 정함. 브라우저는 큰 메시지를 조각내지 않으므로 프레임 상한 = 메시지 상한 |
 | `maxSessions` / `maxSessionsPerAddress` | 1000 / 50 | `SessionFilter` | P8 | 이 계획에서 정함 |

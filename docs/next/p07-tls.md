@@ -6,7 +6,7 @@
 
 ## 작업
 
-### P7-01 TLS 연구 문서 `[ ]`
+### P7-01 TLS 연구 문서 `[x]` (2026-10-18)
 - 산출물: `docs/research/tls.md`. 구현 전에 쓴다. core-analysis.md §2.3의 "TLS 상세는 별도 연구(예정)"를 이 문서 링크로 바꾼다.
 - 회사 자료는 쓰지 않는다. Android 소스(AOSP, Conscrypt), JDK 문서, RFC, 실기기 측정만 쓴다(CLAUDE.md "연구 자료").
 - 조사할 질문:
@@ -27,7 +27,7 @@
 
 - 완료 조건: 문서가 있고, 각 질문에 [검증] 또는 [판단] 표기와 출처가 있다. 아래 작업의 기본값이 이 문서 결과로 확정되었다.
 
-### P7-02 TLS 설정 API `[ ]`
+### P7-02 TLS 설정 API `[x]` (2026-10-18)
 - `TlsConfig` 빌더 → `TinyHttpd.Builder.tls(TlsConfig)`. 구 `makeSecure`, `SecureServerSocketFactory`, `makeSSLSocketFactory`를 대체한다.
 - 소켓 구성: `SSLServerSocket`을 쓰지 않는다. 평문 `ServerSocket`으로 받은 뒤 워커에서 `SSLSocketFactory.createSocket(socket, host, port, true)`로 감싸고, **`setUseClientMode(false)`** 를 건다(감싼 소켓의 기본은 클라이언트 모드다). 프로토콜, cipher, 클라이언트 인증 설정도 이 소켓에 건다. 이유는 셋이다.
   1. watchdog이 아래 평문 소켓을 닫아 막힘 없이 연결을 끊을 수 있다(P3-04).
@@ -43,21 +43,21 @@
 - 구 코드처럼 `getSupportedProtocols()` 전부를 켜지 않는다. SSLv3, TLS 1.0, 1.1은 사용자가 명시적으로 지정해도 경고 로그를 남긴다.
 - 완료 조건: TLS-01~04 통과.
 
-### P7-03 핸드셰이크 `[ ]`
+### P7-03 핸드셰이크 `[x]` (2026-10-18)
 - 워커가 첫 요청을 읽기 전에 `startHandshake()`를 명시적으로 부른다. 연결 단계 `HANDSHAKING`을 추가한다. 헤더 타임아웃(P3-03)과 같이 워커가 `setSoTimeout(handshakeTimeout)`으로 마감을 지키고, watchdog은 마감을 크게 넘긴 연결의 평문 소켓을 닫는 보조 수단이다.
 - 실패(`SSLException`)는 FINE 로그를 남기고 바로 닫는다. **TLS 스트림에 평문 HTTP 오류를 쓰지 않는다**(core-analysis.md §2.3의 구 동작).
 - 평문 HTTP 요청이 TLS 포트로 온 경우(#264): P7-01 결과에 따라 정한다. 첫 바이트를 엿보고 소켓을 다시 감쌀 수 있으면 평문 `400 "use https"`를 보낸다. 없으면 그냥 닫는다.
 - 클라이언트 인증서는 요청 속성 `tinyhttpd.tls.peerCertificates`(`X509Certificate[]`)로 제공한다. 프로토콜과 cipher는 `tinyhttpd.tls.protocol`, `tinyhttpd.tls.cipherSuite`다.
 - 완료 조건: TLS-05~08 통과.
 
-### P7-04 키 로딩 `[ ]`
+### P7-04 키 로딩 `[x]` (2026-10-18)
 - `TlsConfig.keyStore(InputStream, String type, char[] password)`와 `File` 버전. classpath 경로 방식(#523)은 두지 않는다.
 - `type` 기본값은 `PKCS12`. Android 구버전용으로 `BKS`를 안내한다(P7-01 결과에 따름).
 - 예외는 원인을 보존한다. 구 코드는 `new IOException(e.getMessage())`로 원인을 버렸다(#516).
 - 테스트용 인증서: 테스트 실행 시 `keytool`로 PKCS12를 만들지 않는다. 미리 만든 테스트 전용 인증서(유효기간 100년, `CN=localhost`, SAN `localhost`, `127.0.0.1`)를 `core/src/testFixtures/resources`에 둔다. 구 `keystore.jks`는 P8-05에서 삭제한다.
 - 완료 조건: TLS-09, TLS-10 통과.
 
-### P7-05 TLS 닫기 경로 `[ ]`
+### P7-05 TLS 닫기 경로 `[x]` (2026-10-18)
 - `SSLSocket`은 `shutdownOutput()`을 지원하지 않는다. 서버가 먼저 닫을 때는 이렇게 한다(P7-01 결과로 확정한다).
   1. flush
   2. 입력을 TLS 스트림으로 EOF 또는 `lingerTimeout`까지 읽어 버린다(바이트 상한 없음, P1-15와 같음)
@@ -65,18 +65,18 @@
 - 쓰기 실패 후에는 linger 없이 바로 닫는다.
 - 완료 조건: TLS 연결에서 KA-14 시나리오 통과(TLS-11).
 
-### P7-06 로그 폭주 방지 `[ ]`
+### P7-06 로그 폭주 방지 `[x]` (2026-10-18)
 - TLS 쓰기 실패(`SSLProtocolException`, `BAD_WRITE_RETRY`)가 나면 연결을 즉시 닫는다. 같은 연결에서 다시 쓰지 않는다(P2-05 규칙의 TLS 확인). 로그 수준은 FINE이다.
 - 완료 조건: TLS-12(포트 스캔 흉내: 무작위 바이트, 핸드셰이크 도중 끊기 1천 회)에서 연결당 로그가 1줄 이하이고, 워커가 회전하지 않는다.
 
-### P7-07 HTTP와 HTTPS 동시 제공 `[ ]`
+### P7-07 HTTP와 HTTPS 동시 제공 `[x]` (2026-10-18)
 - 서버 하나가 여러 리스너를 가진다: `builder.listen(8080)`, `builder.listen(8443, tlsConfig)`. 워커 풀, 레지스트리, watchdog, 한도는 공유한다(#455).
 - 리스너마다 acceptor 스레드 하나.
 - TLS 리스너에서 상한을 넘으면 응답 없이 닫는다(P3-01 거절 규칙).
 - HTTP→HTTPS 리디렉션은 core가 하지 않는다. `isSecure()`를 보는 필터 예제로 안내한다.
 - 완료 조건: TLS-13, TLS-14 통과.
 
-### P7-08 TLS 회귀 스위트 `[ ]`
+### P7-08 TLS 회귀 스위트 `[x]` (2026-10-18)
 - KA/KB/RQ/RS/TH 테스트를 **TLS 위에서 한 번 더** 돌린다. JUnit `Parameterized`로 전송 방식(평문/TLS)을 매개변수로 받는다. `RawConnection`과 OkHttp 헬퍼에 TLS 옵션을 추가한다(P0-04 도구 확장).
 - 평문에만 해당하는 테스트(`transferTo` 경로 등)는 제외 목록에 이유를 적는다.
 - 완료 조건: TLS 매개변수로 위 스위트가 통과한다.

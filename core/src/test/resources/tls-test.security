@@ -1,0 +1,6 @@
+# Test JVM only (core build.gradle): JDK 17 defaults minus TLSv1/TLSv1.1, so TLS-02 proves that TinyHttpd's own
+# protocol list, not the JDK, refuses TLS 1.0.
+jdk.tls.disabledAlgorithms=SSLv3, DTLSv1.0, RC4, DES, \
+    MD5withRSA, DH keySize < 1024, EC keySize < 224, 3DES_EDE_CBC, anon, NULL, \
+    ECDH, TLS_RSA_*, rsa_pkcs1_sha1 usage HandshakeSignature, \
+    ecdsa_sha1 usage HandshakeSignature, dsa_sha1 usage HandshakeSignature

@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
 /**
  * Minimal HTTP/1.1 client over a raw socket, so tests control exactly which bytes go on the wire and can keep using
  * the same connection.
@@ -80,12 +83,28 @@ public final class RawConnection implements Closeable {
      *        writes
      */
     public RawConnection(int port, int receiveBufferBytes) throws IOException {
-        socket = new Socket();
+        this(port, receiveBufferBytes, null);
+    }
+
+    /**
+     * @param port server port
+     * @param receiveBufferBytes socket receive buffer, 0 for the default
+     * @param tls null for plain HTTP, else the TLS client socket factory; the handshake completes in the constructor
+     */
+    public RawConnection(int port, int receiveBufferBytes, SSLSocketFactory tls) throws IOException {
+        Socket plain = new Socket();
         if (receiveBufferBytes > 0) {
-            socket.setReceiveBufferSize(receiveBufferBytes);
+            plain.setReceiveBufferSize(receiveBufferBytes);
         }
-        socket.connect(new InetSocketAddress("127.0.0.1", port), 3000);
-        socket.setSoTimeout(3000);
+        plain.connect(new InetSocketAddress("127.0.0.1", port), 3000);
+        plain.setSoTimeout(3000);
+        if (tls != null) {
+            SSLSocket s = (SSLSocket) tls.createSocket(plain, "localhost", port, true);
+            s.startHandshake();
+            socket = s;
+        } else {
+            socket = plain;
+        }
         in = new BufferedInputStream(socket.getInputStream());
         out = socket.getOutputStream();
     }
@@ -93,6 +112,11 @@ public final class RawConnection implements Closeable {
     /** @return the buffered input; use it, not the socket's stream, after reading lines */
     public InputStream input() {
         return in;
+    }
+
+    /** @return a TLS connection trusting the test certificate ({@link TestTls}) */
+    public static RawConnection tls(int port) throws IOException {
+        return new RawConnection(port, 0, TestTls.socketFactory());
     }
 
     public Socket socket() {
