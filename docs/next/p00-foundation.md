@@ -20,7 +20,7 @@
 - 진행 상황(2026-10-18): 로컬에서 1~3단계를 끝냈다(`37c1ab7`, `34ce2c1`, `0710bef`, 병합 `4352bae`). push는 소유자 확인 뒤에 한다. CLAUDE.md와 SpecKiwi 파일(`AGENTS.md`, `docs/spec/`, `docs/rule/`, `docs/.kiwi/`)은 소유자 요청으로 커밋에서 뺐다(P0-08 결정 뒤 커밋).
 - 완료 조건: `git status`가 깨끗하다. `git log --follow`로 원본 파일의 이력을 따라갈 수 있다(이름 변경이 rename으로 기록됨). `origin/main`에 push되었다.
 
-### P0-02 CI `[ ]`
+### P0-02 CI `[~]` (2026-10-18 워크플로 작성. PR에서 실행 확인과 KA-14 Linux 결과 기록이 남음)
 - GitHub Actions 워크플로 `.github/workflows/build.yml`:
   - `ubuntu-latest`, Temurin JDK 17, Gradle 캐시
   - `./gradlew build` (실패하면 CI 실패)
