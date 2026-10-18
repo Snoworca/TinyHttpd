@@ -11,7 +11,10 @@ allprojects {
     }
 }
 
-subprojects {
+// Library modules only: tools such as :bench use JVM-only APIs and skip the API 21 check.
+def libraryProjects = [':tinyhttpd-core', ':tinyhttpd-webserver', ':tinyhttpd-websocket', ':tinyhttpd-router']
+
+configure(subprojects.findAll { it.path in libraryProjects }) {
     apply plugin: 'java-library'
     apply plugin: 'ru.vyarus.animalsniffer'
 
@@ -85,5 +88,26 @@ project(':tinyhttpd-router') {
     dependencies {
         api project(':tinyhttpd-core')
         testImplementation 'org.apache.httpcomponents:httpclient:4.4.1'
+    }
+}
+
+// Benchmark tool (tools/bench): not published, not checked against API 21.
+project(':bench') {
+    apply plugin: 'java'
+    apply plugin: 'application'
+
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 8
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ['-Xlint:-options']
+    }
+
+    dependencies {
+        implementation project(':tinyhttpd-core')
+    }
+
+    application {
+        mainClass = 'com.snoworca.tinyhttpd.bench.Bench'
+        applicationDefaultJvmArgs = ['-Xmx256m']
     }
 }

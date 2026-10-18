@@ -28,7 +28,7 @@
 - **Linux 측정 겸용**: KA-14(lingering close)는 macOS에서 재현되지 않았다. Linux 러너 결과를 keep-alive.md §2.1에 기록한다.
 - 완료 조건: PR에서 워크플로가 돌고, knownDefectTest 리포트를 내려받을 수 있다.
 
-### P0-03 기준선 측정 도구 `[ ]`
+### P0-03 기준선 측정 도구 `[x]` (2026-10-18, `tools/bench`, `docs/research/baseline.md`. JFR 할당 측정은 미구현)
 - 목적: "메모리 최소화"를 숫자로 관리한다. 재작성 전후를 같은 도구로 비교한다.
 - `tools/bench/`에 JVM용 측정 프로그램을 둔다. 라이브러리 빌드와 분리된 Gradle 서브프로젝트로 만들고, 배포 대상에서 뺀다.
   - 루트 `build.gradle`의 `subprojects {}`는 지금 모든 서브프로젝트에 java-library와 animal-sniffer API 21 검사를 건다. bench는 `java.lang.management`와 JFR을 쓰므로, 설정 대상을 라이브러리 모듈 목록으로 한정한다.
