@@ -73,6 +73,11 @@ final class Upgraded implements UpgradedConnection {
             throw new IllegalStateException("response already committed");
         }
         ExchangeResponse.checkHeader("Upgrade", protocol);
+        // The new protocol starts after the request: its body must be consumed first, or its bytes would be parsed
+        // as the new protocol's (RFC 9110 7.8).
+        if (!res.ex.body.drain(c.cfg.maxDrainBytes)) {
+            throw new HttpException(413, "upgrade request body too large");
+        }
         HttpServer server = c.server;
         if (server.upgraded.incrementAndGet() > server.config.getMaxUpgradedConnections()) {
             server.upgraded.decrementAndGet();

@@ -120,6 +120,13 @@ public final class TinyHttpd {
     }
 
     /**
+     * @param bytesPerSecond minimum request body rate, 0 for none; applies to bodies read after the call
+     */
+    public void setMinRequestBodyRate(int bytesPerSecond) {
+        set("minRequestBodyRate", bytesPerSecond, 0);
+    }
+
+    /**
      * @param millis blocked response write; takes effect for timers started after the call
      */
     public void setWriteTimeout(int millis) {
@@ -247,6 +254,7 @@ public final class TinyHttpd {
         int idleTimeoutUnderLoad = 2000;
         int headerTimeout = 10000;
         int bodyReadTimeout = 30000;
+        int minRequestBodyRate = 240;
         int writeTimeout = 30000;
         int queueWaitTimeout = 5000;
         int workerKeepAlive = 60000;
@@ -528,6 +536,17 @@ public final class TinyHttpd {
             return this;
         }
         /**
+         * Slow-body guard: once the server has waited 5 s in total for request body bytes, a body arriving slower than
+         * this is answered with 408. Only time spent waiting on the client counts, not the handler's own pace.
+         *
+         * @param value minimum request body rate in bytes per second, 0 for none; default 240
+         * @return this builder
+         */
+        public Builder minRequestBodyRate(int value) {
+            this.minRequestBodyRate = value;
+            return this;
+        }
+        /**
          * @param value timeout of one request body read; default 30000
          * @return this builder
          */
@@ -673,6 +692,7 @@ public final class TinyHttpd {
             positive("idleTimeoutUnderLoad", idleTimeoutUnderLoad);
             positive("headerTimeout", headerTimeout);
             positive("bodyReadTimeout", bodyReadTimeout);
+            nonNegative("minRequestBodyRate", minRequestBodyRate);
             positive("writeTimeout", writeTimeout);
             positive("queueWaitTimeout", queueWaitTimeout);
             positive("workerKeepAlive", workerKeepAlive);

@@ -48,6 +48,7 @@
 | 헤더 수신 시간 | `headerTimeout` | 10 s | 408 | TH-04 |
 | 요청 바디 | `maxRequestBodyBytes`(전역, 선택, CL과 chunked 모두). 지정하지 않으면 핸들러가 `readForm`/`MultipartLimits`로 정한다 | 없음 | 413 | RS-23, RQ-28, IO-06, IO-12 |
 | 미소비 바디 | `maxDrainBytes` | 64 KB | 닫기 | RQ-17 |
+| 바디 전송률(느린 POST) | `minRequestBodyRate`(클라이언트를 기다린 시간만 계산, 5 s 유예) | 240 B/s | 408 | ReviewDefectsTest |
 | 청크 크기 줄 / trailer | `maxChunkSizeLineBytes` / `maxTrailerBytes` | 1 KB / 8 KB | 400 | RQ-14, 15 |
 | form 바디 | `readForm(maxBytes)` | 호출자 | 413 | IO-12 |
 | multipart 파트 수 / 크기 / 헤더 | `MultipartLimits` | 호출자 | 413 | IO-05, 06 |

@@ -64,6 +64,7 @@ public final class ServerConfig {
     private volatile int idleTimeoutUnderLoad;
     private volatile int headerTimeout;
     private volatile int bodyReadTimeout;
+    private volatile int minRequestBodyRate;
     private volatile int writeTimeout;
     private volatile int queueWaitTimeout;
     private volatile int workerKeepAlive;
@@ -120,6 +121,7 @@ public final class ServerConfig {
         idleTimeoutUnderLoad = b.idleTimeoutUnderLoad;
         headerTimeout = b.headerTimeout;
         bodyReadTimeout = b.bodyReadTimeout;
+        minRequestBodyRate = b.minRequestBodyRate;
         writeTimeout = b.writeTimeout;
         queueWaitTimeout = b.queueWaitTimeout;
         workerKeepAlive = b.workerKeepAlive;
@@ -147,6 +149,11 @@ public final class ServerConfig {
     /** @return the current {@code headerTimeout}; see {@link TinyHttpd.Builder#headerTimeout(int)} */
     public int getHeaderTimeout() {
         return headerTimeout;
+    }
+
+    /** @return the current {@code minRequestBodyRate}; see {@link TinyHttpd.Builder#minRequestBodyRate(int)} */
+    public int getMinRequestBodyRate() {
+        return minRequestBodyRate;
     }
 
     /** @return the current {@code bodyReadTimeout}; see {@link TinyHttpd.Builder#bodyReadTimeout(int)} */
@@ -215,6 +222,8 @@ public final class ServerConfig {
             headerTimeout = value;
         } else if ("bodyReadTimeout".equals(name)) {
             bodyReadTimeout = value;
+        } else if ("minRequestBodyRate".equals(name)) {
+            minRequestBodyRate = value;
         } else if ("writeTimeout".equals(name)) {
             writeTimeout = value;
         } else if ("idleTimeout".equals(name)) {

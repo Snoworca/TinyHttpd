@@ -305,4 +305,48 @@ public class WebServerTest {
         assertEquals(302, r.status());
         assertEquals("./docs/?x=1", r.header("location"));
     }
+
+    /** A backslash is a separator on Windows; with containment off for symlinks it could climb out of the root. */
+    @Test
+    public void backslashInPathIsRejected() throws IOException {
+        start(new StaticFileHandler(root).followSymlinksOutsideRoot(true), null);
+        assertEquals(400, send("GET", "/docs%5C..%5Chello.txt", "").status());
+        assertEquals(400, send("GET", "/a%5Cb", "").status());
+        assertEquals(200, send("GET", "/hello.txt", "").status());
+    }
+
+    /**
+     * Mounted at /share, a request for "/share" reaches the handler as "/". Serving the listing there would make its
+     * relative links resolve above the mount; the handler redirects to "share/" from the request URI instead.
+     */
+    @Test
+    public void mountRootWithoutSlashRedirects() throws IOException {
+        final StaticFileHandler files = new StaticFileHandler(root).directoryListing(true);
+        TinyHttpd.Builder b = com.snoworca.tinyhttpd.testing.TestServers.builder().port(0).hostCheck(false)
+                .handler(new com.snoworca.tinyhttpd.http.Handler() {
+
+                    @Override
+                    public void handle(com.snoworca.tinyhttpd.http.Request req,
+                            com.snoworca.tinyhttpd.http.Response res) throws IOException,
+                            com.snoworca.tinyhttpd.http.HttpException {
+                        final String sub = req.getPath().equals("/share") ? "/"
+                                : req.getPath().substring("/share".length());
+                        files.handle(new com.snoworca.tinyhttpd.http.RequestWrapper(req) { // what Router.mount does
+
+                            @Override
+                            public String getPath() {
+                                return sub;
+                            }
+                        }, res);
+                    }
+                });
+        server = b.build();
+        server.start();
+        RawResponse r = send("GET", "/share?x=1", "");
+        assertEquals(302, r.status());
+        assertEquals("./share/?x=1", r.header("location"));
+        assertEquals(200, send("GET", "/share/", "").status());
+        RawResponse d = send("GET", "/share/docs", "");
+        assertEquals("./docs/", d.header("location"));
+    }
 }

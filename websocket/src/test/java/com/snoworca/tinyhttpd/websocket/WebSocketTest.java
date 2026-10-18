@@ -227,6 +227,23 @@ public class WebSocketTest {
         }
     }
 
+    /** Bytes of a request body are not WebSocket frames: the body is consumed before 101 (RFC 9110 7.8). */
+    @Test
+    public void upgradeRequestBodyIsNotReadAsFrames() throws IOException {
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
+        RawConnection c = new RawConnection(port);
+        try {
+            c.send(HANDSHAKE + "Content-Length: 5\r\n\r\nhello");
+            assertEquals(101, c.read(true).status());
+            c.send(frame(1, "hi".getBytes("UTF-8"), true, true));
+            Object[] f = readFrame(c);
+            assertEquals(1, f[0]);
+            assertEquals("hi", new String((byte[]) f[1], "UTF-8"));
+        } finally {
+            c.close();
+        }
+    }
+
     /** RFC 6455 7.4: codes that must not appear on the wire are a protocol error, not echoed. */
     @Test
     public void mod15_invalidCloseCode() throws IOException {

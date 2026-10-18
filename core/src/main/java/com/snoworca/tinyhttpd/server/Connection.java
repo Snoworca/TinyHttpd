@@ -85,6 +85,14 @@ final class Connection {
     /** The connection must close after the current response. */
     boolean mustClose;
 
+    /** Time spent waiting on the client for this request's body, and the body bytes that arrived meanwhile. */
+    private long bodyWaitMillis;
+
+    private long bodyBytes;
+
+    /** Waiting on body bytes is free up to this much in total; then {@code minRequestBodyRate} applies. */
+    static final long BODY_RATE_GRACE_MS = 5000;
+
     /** The last response is close-delimited: the client waits for EOF before it closes. */
     private boolean endsByClose;
 
@@ -176,6 +184,8 @@ final class Connection {
                 return; // EOF or reset inside the header: nothing to answer
             }
             requestCount++;
+            bodyWaitMillis = 0;
+            bodyBytes = 0;
             server.requests.incrementAndGet();
             setPhase(HANDLING);
             ExchangeResponse res = new ExchangeResponse(this, ex);
@@ -244,10 +254,34 @@ final class Connection {
                 break;
             default:
                 t = cfg.getBodyReadTimeout();
+                int rate = cfg.getMinRequestBodyRate();
+                if (rate > 0 && readingBody()) {
+                    // Wait no longer than the bytes so far have earned (at least the grace), so a trickle is cut
+                    // when it falls behind instead of a bodyReadTimeout per byte later.
+                    long allowed = Math.max(BODY_RATE_GRACE_MS, bodyBytes * 1000 / rate) - bodyWaitMillis;
+                    t = (int) Math.max(1, Math.min(t, allowed + 1));
+                }
         }
         if (t != soTimeout) {
             socket.setSoTimeout(t);
             soTimeout = t;
+        }
+    }
+
+    boolean readingBody() {
+        int p = phase.get();
+        return p == HANDLING || p == DRAINING;
+    }
+
+    /** Accounts one body read; fails the body once it arrives slower than {@code minRequestBodyRate}. */
+    void bodyRead(int n, long waitedMillis) throws SocketTimeoutException {
+        bodyWaitMillis += waitedMillis;
+        if (n > 0) {
+            bodyBytes += n;
+        }
+        int rate = cfg.getMinRequestBodyRate();
+        if (rate > 0 && bodyWaitMillis > BODY_RATE_GRACE_MS && bodyBytes * 1000 < (long) rate * bodyWaitMillis) {
+            throw new SocketTimeoutException("request body slower than " + rate + " B/s");
         }
     }
 

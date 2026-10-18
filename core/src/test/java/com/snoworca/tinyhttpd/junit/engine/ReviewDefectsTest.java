@@ -145,4 +145,151 @@ public class ReviewDefectsTest extends EngineTestBase {
         assertArrayEquals(new long[] {3, 99}, FileResponses.parseRange("bytes=3-", 100));
         assertArrayEquals(new long[] {3, 4}, FileResponses.parseRange("bytes= 3 - 4 ", 100));
     }
+
+    /** A body trickled below the minimum rate ends with 408 once the grace has passed, despite each read being quick. */
+    @Test
+    public void slowBodyBelowMinimumRateGets408() throws Exception {
+        routes.put("/up", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) throws IOException {
+                java.io.InputStream in = req.getInputStream();
+                while (in.read() >= 0) {
+                    // drain
+                }
+                text(res, "done");
+            }
+        });
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().minRequestBodyRate(1000));
+        RawConnection c = connect();
+        try {
+            c.setReadTimeout(15000);
+            c.send("POST /up HTTP/1.1\r\nHost: x\r\nContent-Length: 100000\r\n\r\n");
+            long start = System.currentTimeMillis();
+            try {
+                for (int i = 0; i < 40; i++) { // 2 bytes per second, each read well inside bodyReadTimeout
+                    c.send("b");
+                    Thread.sleep(500);
+                }
+            } catch (IOException closedByServer) {
+                // the server answered and closed
+            }
+            assertEquals(408, c.read().status());
+            long elapsed = System.currentTimeMillis() - start;
+            org.junit.Assert.assertTrue("elapsed " + elapsed, elapsed < 9000);
+        } finally {
+            c.close();
+        }
+    }
+
+    /** Only time spent waiting on the client counts: a handler that reads slowly is not the client's fault. */
+    @Test
+    public void slowHandlerIsNotASlowClient() throws Exception {
+        routes.put("/up", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) throws IOException {
+                java.io.InputStream in = req.getInputStream();
+                byte[] b = new byte[8192];
+                int total = 0;
+                for (int n; (n = in.read(b)) >= 0;) {
+                    total += n;
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                text(res, Integer.toString(total));
+            }
+        });
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().minRequestBodyRate(1000000).inputBufferBytes(8192));
+        RawConnection c = connect();
+        try {
+            c.setReadTimeout(20000); // the handler takes about 6 s, past the 5 s grace
+            c.send("POST /up HTTP/1.1\r\nHost: x\r\nContent-Length: 49152\r\n\r\n" + repeat('u', 49152));
+            RawResponse r = c.read();
+            assertEquals(200, r.status());
+            assertEquals("49152", r.body);
+        } finally {
+            c.close();
+        }
+    }
+
+    /** Behind a trusted proxy the port comes from X-Forwarded-Host, else X-Forwarded-Port, else the scheme default. */
+    @Test
+    public void forwardedHeadersSetThePortToo() throws Exception {
+        routes.put("/", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) throws IOException {
+                text(res, req.getServerName() + ":" + req.getServerPort());
+            }
+        });
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder()
+                .filter(new com.snoworca.tinyhttpd.http.filter.ForwardedHeadersFilter("127.0.0.1")));
+        String h = "GET / HTTP/1.1\r\nHost: inner:8080\r\n";
+        assertEquals("nas.example:8443", get(h + "X-Forwarded-Host: nas.example:8443\r\n\r\n").body);
+        assertEquals("nas.example:443",
+                get(h + "X-Forwarded-Host: nas.example\r\nX-Forwarded-Proto: https\r\n\r\n").body);
+        assertEquals("nas.example:80", get(h + "X-Forwarded-Host: nas.example\r\n\r\n").body);
+        assertEquals("nas.example:443",
+                get("GET / HTTP/1.1\r\nHost: nas.example\r\nX-Forwarded-Proto: https\r\n\r\n").body);
+        assertEquals("nas.example:9000",
+                get(h + "X-Forwarded-Host: nas.example\r\nX-Forwarded-Port: 9000\r\n\r\n").body);
+        assertEquals("[::1]:8443", get(h + "X-Forwarded-Host: [::1]:8443\r\n\r\n").body);
+        assertEquals("inner:8080", get(h + "\r\n").body);
+    }
+
+    /** The worker loop survives a Throwable escaping a connection (here from the logger) and returns the slot. */
+    @Test
+    public void throwableEscapingAConnectionReturnsTheSlot() throws Exception {
+        routes.put("/fail", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) {
+                throw new IllegalStateException("handler bug");
+            }
+        });
+        routes.put("/ok", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) throws IOException {
+                text(res, "ok");
+            }
+        });
+        final java.util.concurrent.atomic.AtomicInteger caught = new java.util.concurrent.atomic.AtomicInteger();
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(2)
+                .queueWaitTimeout(1000).logger(new com.snoworca.tinyhttpd.log.TinyLog() {
+
+                    @Override
+                    public boolean isLoggable(java.util.logging.Level level) {
+                        return true;
+                    }
+
+                    @Override
+                    public void log(java.util.logging.Level level, String message, Throwable t) {
+                        if (message.startsWith("handler failed")) {
+                            throw new AssertionError("logger bug"); // escapes dispatch's catch blocks
+                        }
+                        if (message.startsWith("connection failed")) {
+                            caught.incrementAndGet();
+                        }
+                    }
+                }));
+        for (int i = 0; i < 2; i++) {
+            RawConnection c = connect();
+            try {
+                c.send("GET /fail HTTP/1.1\r\nHost: x\r\n\r\n");
+                c.setReadTimeout(3000);
+                c.input().read(); // closed without an answer
+            } catch (IOException expected) {
+                // reset
+            } finally {
+                c.close();
+            }
+        }
+        assertEquals(200, get("GET /ok HTTP/1.1\r\nHost: x\r\n\r\n").status());
+        assertEquals(2, caught.get());
+    }
 }

@@ -112,12 +112,19 @@ public final class StaticFileHandler implements Handler {
         }
         File file = resolve(req.getPath());
         if (file.isDirectory()) {
-            if (!req.getPath().endsWith("/")) {
-                // Relative ("./name/"), so it also works under a Router mount, whose handler sees only the path below
-                // the mount. Built from the normalized last segment: never "//host" (an open redirect) nor a scheme.
-                String path = req.getPath();
+            // The client's URL decides where relative links in a listing or index page resolve, so test it, not
+            // getPath(): under a Router mount "/share" reaches this handler as "/", and serving it there would point
+            // the links above the mount.
+            String uri = req.getRequestURI();
+            if (!uri.endsWith("/")) {
+                // Relative ("./name/") from the decoded, re-encoded last segment: never "//host" (an open redirect)
+                // nor a scheme, and it stays inside a mount.
+                String last = PercentCodec.decodePath("/" + uri.substring(uri.lastIndexOf('/') + 1));
+                if (last == null) {
+                    throw new HttpException(400, "invalid path");
+                }
                 StringBuilder location = new StringBuilder("./")
-                        .append(PercentCodec.encode(path.substring(path.lastIndexOf('/') + 1))).append('/');
+                        .append(PercentCodec.encode(last.substring(1))).append('/');
                 if (req.getQueryString() != null) {
                     location.append('?').append(req.getQueryString());
                 }
@@ -176,6 +183,11 @@ public final class StaticFileHandler implements Handler {
 
     /** Maps a normalized request path to a file under the root, refusing escapes. */
     private File resolve(String path) throws IOException, HttpException {
+        if (path.indexOf('\\') >= 0) {
+            // A separator on Windows: "%5C..%5C" would climb out, even past followSymlinksOutsideRoot's lexical
+            // safety (no dot segments). No portable file name needs it.
+            throw new HttpException(400, "backslash in path");
+        }
         File f = new File(root, path);
         // The path has no dot segments (rejected while parsing), so only a symbolic link can lead outside.
         if (!followSymlinksOutsideRoot && !insideRoot(f)) {

@@ -45,7 +45,12 @@ final class InputBuffer {
             pos = 0;
         }
         conn.beforeRead();
+        boolean body = conn.readingBody();
+        long start = body ? System.nanoTime() : 0;
         int n = in.read(buf, lim, buf.length - lim);
+        if (body) {
+            conn.bodyRead(n, (System.nanoTime() - start) / 1000000);
+        }
         if (n > 0) {
             lim += n;
         }
