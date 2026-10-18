@@ -529,6 +529,21 @@ final class ExchangeResponse implements Response {
         }
     }
 
+    /** Sends bytes past the output buffer (sendFile): commits first, counts them against the declared length. */
+    void writeDirect(byte[] b, int off, int len) throws IOException {
+        if (!committed || count > 0) {
+            flushOut(false);
+        }
+        written += len;
+        if (!discard) {
+            write(b, off, len);
+        }
+    }
+
+    boolean isHead() {
+        return ex.isHead();
+    }
+
     /** Ends the response normally: commits, sends the rest, ends chunked coding, checks the declared length. */
     void finish() throws IOException {
         if (finished) {

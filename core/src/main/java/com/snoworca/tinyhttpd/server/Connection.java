@@ -18,6 +18,7 @@ import com.snoworca.tinyhttpd.http.HttpException;
 import com.snoworca.tinyhttpd.http.MalformedBodyException;
 import com.snoworca.tinyhttpd.http.Request;
 import com.snoworca.tinyhttpd.http.Response;
+import com.snoworca.tinyhttpd.http.TruncatedBodyException;
 import com.snoworca.tinyhttpd.http.UpgradedConnection;
 
 /**
@@ -283,16 +284,13 @@ final class Connection {
             res.abort();
             return;
         }
-        if (ex.body.failure == e) {
+        if (ex.body.failure == e || e instanceof BodyTooLargeException || e instanceof MalformedBodyException
+                || e instanceof TruncatedBodyException) {
             int status = e instanceof BodyTooLargeException ? 413 : e instanceof SocketTimeoutException ? 408 : 400;
             if (server.log.isLoggable(Level.FINE)) {
                 server.log.log(Level.FINE, "request body failed: " + e, null);
             }
             error(res, status, null, null, null);
-            return;
-        }
-        if (e instanceof MalformedBodyException) {
-            error(res, 400, null, null, null);
             return;
         }
         error(res, 500, null, null, e);

@@ -90,6 +90,11 @@ public final class RawConnection implements Closeable {
         out = socket.getOutputStream();
     }
 
+    /** @return the buffered input; use it, not the socket's stream, after reading lines */
+    public InputStream input() {
+        return in;
+    }
+
     public Socket socket() {
         return socket;
     }

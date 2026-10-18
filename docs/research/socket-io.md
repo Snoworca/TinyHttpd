@@ -16,3 +16,8 @@
 | 4. 전이중: 채널 소켓에서 한 스레드가 `read`에 막혀 있어도 다른 스레드의 adaptor `write`가 진행 | 예 | 미확인 (JDK 8은 `blockingLock` 공유로 막힌다고 알려짐) | `channelSocketIsFullDuplex` |
 
 - "막힘" 판정: 상대가 읽지 않고 수신 버퍼를 4 KB로 줄인 뒤 300 ms 동안 작업이 끝나지 않으면 막힌 것으로 본다. 닫은 뒤 2초 안에 스레드가 끝나야 통과다.
+
+## 결정 (P5-04, 2026-10-18)
+
+- 엔진은 `ServerSocket`을 유지한다. `sendFile`은 서버 공유 풀(64 KB × 8)의 버퍼로 복사한다(`server/FileTransfer.java`). TLS는 어차피 복사가 필요하고, JVM 측정에서 복사 경로로도 다운로드 4개 동시 약 2.9 GB/s가 나왔다(baseline.md).
+- `transferTo`(채널 소켓) 전환은 Android 실기기 확인(AND-05: soTimeout, close로 깨우기, sendfile 이득) 뒤 다시 판단한다.

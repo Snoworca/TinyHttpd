@@ -6,7 +6,7 @@
 
 ## 작업
 
-### P5-01 스트리밍 multipart 파서 `[ ]`
+### P5-01 스트리밍 multipart 파서 `[x]` (2026-10-18)
 - `Request.readMultipart(MultipartLimits)` → `MultipartReader`. 풀(pull) 방식이다. 바디 전체를 메모리나 임시 파일에 담지 않는다. 메모리 매핑도 쓰지 않는다(#545, #457).
 - boundary: `Content-Type`의 `boundary` 파라미터(1~70자, RFC 2046 §5.1.1). 없거나 형식이 틀리면 `HttpException(400)`. multipart가 아니면 `HttpException(415)`.
 - 경계 탐색: 고정 크기 버퍼(기본 16 KB) 위에서 `\r\n--boundary`를 찾는다. 경계가 버퍼 끝에 걸치는 경우를 처리하려고 경계 길이만큼 겹치게 남긴다. 알고리즘은 KMP나 Horspool 중 하나로 한다. 버퍼가 고정이므로 메모리는 업로드 크기와 무관하다.
@@ -21,19 +21,19 @@
 - 종료 경계(`--boundary--`) 없이 바디가 끝나면 `MalformedBodyException`이다. preamble과 epilogue는 무시한다.
 - 완료 조건: IO-01~08 통과. 4 GB 업로드에서 힙 증가가 버퍼 크기 수준이다(IO-09).
 
-### P5-02 `Part` 편의 기능과 파일 이름 `[ ]`
+### P5-02 `Part` 편의 기능과 파일 이름 `[x]` (2026-10-18)
 - `Part.readString(int maxBytes)`: 작은 form 필드를 문자열로 읽는다. 파트의 charset, 없으면 UTF-8을 쓴다. 넘으면 413.
 - `getSubmittedFileName()`: 위 디코딩을 거친 이름에서 경로 성분을 제거한다(`/`와 `\` 모두 기준). `NUL`과 제어 문자를 지운다. 결과가 비었거나 `.`/`..`이면 `null`. **이 값을 그대로 파일 경로로 쓰지 말라고** javadoc에 적는다. 저장 위치 결정은 앱의 책임이다(P9 SEC-06).
 - 업로드 중 끊김: 파트 스트림이 `TruncatedBodyException`을 던진다. 부분 파일 정리는 앱이 한다. 권장 패턴(임시 이름으로 쓰고 끝나면 `renameTo`)을 javadoc 예제로 둔다.
 - 완료 조건: IO-10, IO-11 통과.
 
-### P5-03 `readForm` `[ ]`
+### P5-03 `readForm` `[x]` (2026-10-18)
 - `application/x-www-form-urlencoded`만 받는다. 다른 Content-Type이면 `HttpException(415)`.
 - `maxBytes`를 넘으면 `HttpException(413)`. 디코딩은 P4-05의 form 모드 디코더를 쓴다. charset은 Content-Type의 값, 없으면 UTF-8.
 - `getInputStream`/`readForm`/`readMultipart` 중 둘 이상을 부르면 `IllegalStateException`(servlet-api.md §4.2).
 - 완료 조건: IO-12, IO-13 통과.
 
-### P5-04 소켓 종류와 `sendFile` 결정 `[ ]`
+### P5-04 소켓 종류와 `sendFile` 결정 `[x]` (2026-10-18: JVM 근거로 ServerSocket + 64 KB 버퍼 복사로 결정, AND-05에서 재확인)
 `FileChannel.transferTo`를 쓰려면 소켓에 채널이 있어야 한다. 그런데 `ServerSocket.accept()`로 만든 소켓은 `getChannel()`이 `null`이다. 채널 기반 소켓(`ServerSocketChannel`)으로 바꾸면 다음이 달라질 수 있다. 그래서 먼저 확인한다.
 
 | 확인 항목 | 왜 중요한가 |
@@ -47,7 +47,7 @@
 - 결과와 결정은 `docs/research/socket-io.md`(Android 절, 결정 절)에 기록한다.
 - 완료 조건: 문서가 있고, 결정(채널 사용 여부, 복사 버퍼 크기)이 P5-05에 반영되었다.
 
-### P5-05 `sendFile` 구현 `[ ]`
+### P5-05 `sendFile` 구현 `[x]` (2026-10-18)
 - 두 가지 형태를 둔다.
   - `Response.sendFile(File file, long offset, long length)`
   - `Response.sendFile(FileChannel channel, long offset, long length)`: Android 10 이상의 SAF(`content://`)에서 얻은 `ParcelFileDescriptor`를 `new FileInputStream(pfd.getFileDescriptor()).getChannel()`로 바꿔 넘길 수 있다(API 21에 있는 API만 쓴다). 채널은 호출자가 닫는다.
@@ -58,7 +58,7 @@
 - 파일이 전송 도중 짧아지면(다른 프로세스가 잘라 냄) 연결을 닫는다. 선언한 길이를 채울 수 없기 때문이다(P2-05와 같은 규칙).
 - 완료 조건: IO-14~16, IO-31 통과.
 
-### P5-06 Range와 조건부 요청 유틸 `[ ]`
+### P5-06 Range와 조건부 요청 유틸 `[x]` (2026-10-18)
 - 위치: **core**의 `com.snoworca.tinyhttpd.http.FileResponses`. webserver 모듈이 없어도 NAS 앱이 파일을 정확히 보낼 수 있어야 하기 때문이다. servlet-api.md §4.2의 "Range 파싱은 webserver 모듈"이라는 문장은 이 결정으로 바꾼다(문서도 고친다).
 - 리소스 추상화 `FileResource`: `length()`, `lastModified()`(밀리초), `openChannel()`(`FileChannel`), `getName()`. 구현은 `FileResource.of(File)`과, 앱이 SAF용으로 만드는 구현(길이·수정 시각은 `DocumentFile`이나 `ContentResolver` 질의로 얻는다)이다. core는 Android API에 의존하지 않으므로 SAF 구현 예제는 가이드(P12-04)에 둔다.
 - `FileResponses.serve(Request, Response, FileResource, String contentType)`(그리고 `File` 편의 오버로드) 하나로 다음을 처리한다:
@@ -73,7 +73,7 @@
 - 다운로드 파일 이름: `FileResponses.attachment(Response, String fileName)`이 RFC 6266 `Content-Disposition`을 만든다. ASCII 대체 이름(`filename="…"`, 비ASCII는 `_`)과 `filename*=UTF-8''<퍼센트 인코딩>`을 함께 쓴다. 따옴표, CR, LF, 경로 구분자는 제거한다.
 - 완료 조건: IO-17~23, IO-28~30 통과.
 
-### P5-07 gzip 정책 `[ ]`
+### P5-07 gzip 정책 `[x]` (2026-10-18)
 - core는 **기본으로 압축하지 않는다.** 구 코드의 "text/*는 항상 gzip" 정책을 없앤다(#463, SSE 버퍼 문제).
 - 선택 필터 `GzipFilter`(core `http.filter`):
   - `Accept-Encoding`에 `gzip`이 있고 q > 0일 때만 압축한다
