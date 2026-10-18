@@ -12,7 +12,8 @@ allprojects {
 }
 
 // Library modules only: tools such as :bench use JVM-only APIs and skip the API 21 check.
-def libraryProjects = [':tinyhttpd-core', ':tinyhttpd-webserver', ':tinyhttpd-websocket', ':tinyhttpd-router']
+def libraryProjects = [':tinyhttpd-core', ':tinyhttpd-webserver', ':tinyhttpd-websocket', ':tinyhttpd-router',
+                       ':tinyhttpd-session']
 
 configure(subprojects.findAll { it.path in libraryProjects }) {
     apply plugin: 'java-library'
@@ -104,6 +105,13 @@ project(':tinyhttpd-websocket') {
 }
 
 project(':tinyhttpd-router') {
+    dependencies {
+        api project(':tinyhttpd-core')
+        testImplementation testFixtures(project(':tinyhttpd-core'))
+    }
+}
+
+project(':tinyhttpd-session') {
     dependencies {
         api project(':tinyhttpd-core')
         testImplementation testFixtures(project(':tinyhttpd-core'))

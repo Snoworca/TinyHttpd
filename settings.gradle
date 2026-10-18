@@ -4,10 +4,12 @@ include ':tinyhttpd-core'
 include ':tinyhttpd-webserver'
 include ':tinyhttpd-websocket'
 include ':tinyhttpd-router'
+include ':tinyhttpd-session'
 include ':bench'
 
 project(':tinyhttpd-core').projectDir = file('core')
 project(':tinyhttpd-webserver').projectDir = file('webserver')
 project(':tinyhttpd-websocket').projectDir = file('websocket')
 project(':tinyhttpd-router').projectDir = file('router')
+project(':tinyhttpd-session').projectDir = file('session')
 project(':bench').projectDir = file('tools/bench')
