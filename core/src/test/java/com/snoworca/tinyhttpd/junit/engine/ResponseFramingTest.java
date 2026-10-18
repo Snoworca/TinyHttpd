@@ -339,7 +339,7 @@ public class ResponseFramingTest extends EngineTestBase {
 
     @Test
     public void rs16_maxRequestsPerConnection() throws IOException {
-        start(TinyHttpd.builder().maxRequestsPerConnection(3));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxRequestsPerConnection(3));
         RawConnection c = connect();
         try {
             assertNull(get(c, "/ok").header("connection"));
@@ -418,7 +418,7 @@ public class ResponseFramingTest extends EngineTestBase {
 
     @Test
     public void rs23_serverInitiatedClosesAreAnnounced() throws IOException {
-        start(TinyHttpd.builder().maxRequestBodyBytes(10).maxRequestsPerConnection(1));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxRequestBodyBytes(10).maxRequestsPerConnection(1));
         RawConnection c = connect();
         try {
             RawResponse r = get(c, "/close");

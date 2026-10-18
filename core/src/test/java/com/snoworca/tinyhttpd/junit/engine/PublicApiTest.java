@@ -83,7 +83,7 @@ public class PublicApiTest extends EngineTestBase {
 
     @Test
     public void api01_defaults() throws IOException {
-        TinyHttpd s = TinyHttpd.builder().handler(router).build();
+        TinyHttpd s = com.snoworca.tinyhttpd.testing.TestServers.builder().handler(router).build();
         ServerConfig c = s.getConfig();
         assertEquals(8192, c.inputBufferBytes);
         assertEquals(8192, c.outputBufferBytes);
@@ -124,13 +124,13 @@ public class PublicApiTest extends EngineTestBase {
     @Test
     public void api02_invalidOptionIsNamed() {
         try {
-            TinyHttpd.builder().handler(router).inputBufferBytes(8191).build();
+            com.snoworca.tinyhttpd.testing.TestServers.builder().handler(router).inputBufferBytes(8191).build();
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage(), e.getMessage().contains("inputBufferBytes"));
         }
         try {
-            TinyHttpd.builder().handler(router).maxWorkers(0).build();
+            com.snoworca.tinyhttpd.testing.TestServers.builder().handler(router).maxWorkers(0).build();
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage(), e.getMessage().contains("maxWorkers"));
@@ -165,7 +165,7 @@ public class PublicApiTest extends EngineTestBase {
                 text(res, "handled");
             }
         });
-        start(TinyHttpd.builder().filter(recording("a", true)).filter(recording("b", true)));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(recording("a", true)).filter(recording("b", true)));
         assertEquals("handled", get("/f", "").body);
         assertEquals("[a, b, handler]", order.toString());
         assertEquals("b", attr[0]);
@@ -180,7 +180,7 @@ public class PublicApiTest extends EngineTestBase {
                 order.add("handler");
             }
         });
-        start(TinyHttpd.builder().filter(recording("a", false)));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(recording("a", false)));
         assertEquals("stopped by a", get("/f", "").body);
         assertEquals("[a]", order.toString());
     }
@@ -204,7 +204,7 @@ public class PublicApiTest extends EngineTestBase {
 
     @Test
     public void api08_customErrorHandler() throws IOException {
-        start(TinyHttpd.builder().errorHandler(new ErrorHandler() {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().errorHandler(new ErrorHandler() {
 
             @Override
             public void render(int status, String message, Request request, Response response) throws IOException {
@@ -275,7 +275,7 @@ public class PublicApiTest extends EngineTestBase {
                 }
             }
         });
-        start(TinyHttpd.builder().logger(new TinyLog() {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().logger(new TinyLog() {
 
             @Override
             public boolean isLoggable(Level level) {
@@ -316,7 +316,7 @@ public class PublicApiTest extends EngineTestBase {
     public void api20_api21_hostAllowlistIsOnByDefault() throws IOException {
         hostCheck = true;
         echo("path");
-        start(TinyHttpd.builder().allowedHosts("nas.local"));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().allowedHosts("nas.local"));
         assertEquals(421, get("/", "").status());
         assertEquals(421, get("GET / HTTP/1.1\r\nHost: evil.example\r\n\r\n").status());
         for (String host : new String[] {"192.168.0.7:8080", "[fe80::1]", "LOCALHOST.", "nas.local:80"}) {
@@ -342,10 +342,10 @@ public class PublicApiTest extends EngineTestBase {
     @Test
     public void api23_secT01_forwardedHeadersOnlyFromTrustedProxies() throws IOException {
         echo("remote");
-        start(TinyHttpd.builder().filter(new ForwardedHeadersFilter("127.0.0.1")));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new ForwardedHeadersFilter("127.0.0.1")));
         assertEquals("1.2.3.4|https", get("/", "X-Forwarded-For: 9.9.9.9, 1.2.3.4\r\nX-Forwarded-Proto: https\r\n").body);
         server.stop(100);
-        start(TinyHttpd.builder().filter(new ForwardedHeadersFilter("10.0.0.1")));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new ForwardedHeadersFilter("10.0.0.1")));
         assertEquals("127.0.0.1|http", get("/", "X-Forwarded-For: 1.2.3.4\r\nX-Forwarded-Proto: https\r\n").body);
     }
 
@@ -367,7 +367,7 @@ public class PublicApiTest extends EngineTestBase {
                 got[0] = req.getAttribute("obj");
             }
         });
-        start(TinyHttpd.builder().filter(new Filter() {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new Filter() {
 
             @Override
             public void doFilter(Request req, Response res, FilterChain chain) throws IOException, HttpException {

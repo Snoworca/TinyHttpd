@@ -320,7 +320,7 @@ public class RequestParsingTest extends EngineTestBase {
                 }
             }
         });
-        start(TinyHttpd.builder().maxRequestBodyBytes(1024));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxRequestBodyBytes(1024));
         RawConnection c = connect();
         try {
             c.send("POST /c HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n800\r\n" + repeat('b', 2048)

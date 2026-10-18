@@ -43,7 +43,7 @@ public class RouterTest {
 
     private RawResponse send(Router router, String method, String path) throws IOException {
         if (server == null) {
-            server = TinyHttpd.builder().port(0).hostCheck(false).handler(router).build();
+            server = com.snoworca.tinyhttpd.testing.TestServers.builder().port(0).hostCheck(false).handler(router).build();
             server.start();
         }
         RawConnection c = new RawConnection(server.getPort());

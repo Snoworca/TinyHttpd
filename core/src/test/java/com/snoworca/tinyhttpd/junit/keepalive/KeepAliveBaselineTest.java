@@ -47,7 +47,7 @@ public class KeepAliveBaselineTest {
 
     @Before
     public void setUp() throws IOException {
-        TinyHttpd.Builder b = TinyHttpd.builder().idleTimeout(IDLE);
+        TinyHttpd.Builder b = com.snoworca.tinyhttpd.testing.TestServers.builder().idleTimeout(IDLE);
         server = new ProbeServer(tls ? b.tls(TestTls.server().build()) : b);
         server.start();
         port = server.port();

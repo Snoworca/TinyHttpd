@@ -146,7 +146,7 @@ public class SseTest extends EngineTestBase {
     @Test
     public void sse05_disconnectedClientEndsStream() throws Exception {
         streamRoute(200);
-        start(TinyHttpd.builder().writeTimeout(500));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().writeTimeout(500));
         RawConnection c = openStream("");
         head(c);
         c.socket().setSoLinger(true, 0);
@@ -162,7 +162,7 @@ public class SseTest extends EngineTestBase {
     @Test
     public void sse06_slowSubscriberDoesNotDelayOthers() throws Exception {
         streamRoute(60000);
-        start(TinyHttpd.builder().eventQueueEvents(8).writeTimeout(60000));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().eventQueueEvents(8).writeTimeout(60000));
         List<RawConnection> fast = new ArrayList<RawConnection>();
         RawConnection slow = new RawConnection(port, 2048);
         slow.send("GET /events HTTP/1.1\r\nHost: x\r\n\r\n");
@@ -233,7 +233,7 @@ public class SseTest extends EngineTestBase {
     @Test
     public void sse08_sse09_limitAndHead() throws Exception {
         streamRoute(60000);
-        start(TinyHttpd.builder().maxEventStreams(1));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxEventStreams(1));
         RawConnection first = openStream("");
         try {
             head(first);
@@ -345,7 +345,7 @@ public class SseTest extends EngineTestBase {
     @Test
     public void th18_streamsDoNotUseTheWorkerBudget() throws Exception {
         streamRoute(60000);
-        start(TinyHttpd.builder().maxWorkers(4).maxConnections(4).maxEventStreams(8));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(4).maxConnections(4).maxEventStreams(8));
         List<RawConnection> streams = new ArrayList<RawConnection>();
         try {
             for (int i = 0; i < 4; i++) {
@@ -371,7 +371,7 @@ public class SseTest extends EngineTestBase {
     @Test
     public void io26_gzipLeavesEventStreamsAlone() throws Exception {
         streamRoute(60000);
-        start(TinyHttpd.builder().filter(new GzipFilter()));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new GzipFilter()));
         RawConnection c = openStream("Accept-Encoding: gzip\r\n");
         try {
             RawResponse r = head(c);

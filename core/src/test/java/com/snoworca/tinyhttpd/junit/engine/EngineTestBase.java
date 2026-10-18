@@ -50,7 +50,7 @@ public abstract class EngineTestBase {
     };
 
     protected void start() throws IOException {
-        start(TinyHttpd.builder());
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder());
     }
 
     protected void start(TinyHttpd.Builder builder) throws IOException {

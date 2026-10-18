@@ -95,7 +95,7 @@ public class TlsTest extends EngineTestBase {
     }
 
     private void startTls(TlsConfig tls) throws IOException {
-        start(TinyHttpd.builder().tls(tls).logger(countingLog));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().tls(tls).logger(countingLog));
     }
 
     private static String get(RawConnection c, String path) throws IOException {
@@ -175,7 +175,7 @@ public class TlsTest extends EngineTestBase {
     public void tls02_tls10ClientIsRefused() throws IOException {
         String[] cbc = {"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA", "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"};
         String[] tls10 = {"TLSv1"};
-        TinyHttpd control = TinyHttpd.builder().port(0).hostCheck(false).handler(router).logger(countingLog)
+        TinyHttpd control = com.snoworca.tinyhttpd.testing.TestServers.builder().port(0).hostCheck(false).handler(router).logger(countingLog)
                 .tls(TestTls.server().protocols("TLSv1.2", "TLSv1").cipherSuites(cbc).build()).build();
         control.start();
         try {
@@ -224,7 +224,7 @@ public class TlsTest extends EngineTestBase {
         TlsConfig[] bad = {TestTls.server().protocols("TLSv0.9", "SSLv2").build(),
                 TestTls.server().cipherSuites("TLS_NOT_A_SUITE").build()};
         for (TlsConfig tls : bad) {
-            TinyHttpd s = TinyHttpd.builder().port(0).handler(router).tls(tls).build();
+            TinyHttpd s = com.snoworca.tinyhttpd.testing.TestServers.builder().port(0).handler(router).tls(tls).build();
             try {
                 s.start();
                 s.stop(0);
@@ -368,7 +368,7 @@ public class TlsTest extends EngineTestBase {
     @Test
     public void tls12_junkAndCutHandshakesStayQuiet() throws Exception {
         final List<Thread> workers = Collections.synchronizedList(new ArrayList<Thread>());
-        start(TinyHttpd.builder().tls(TestTls.server().build()).logger(countingLog).threadFactory(new ThreadFactory() {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().tls(TestTls.server().build()).logger(countingLog).threadFactory(new ThreadFactory() {
 
             @Override
             public Thread newThread(Runnable r) {
@@ -421,7 +421,7 @@ public class TlsTest extends EngineTestBase {
     @Test
     public void tls13_plainAndTlsListenersShareWorkers() throws IOException {
         final AtomicInteger threads = new AtomicInteger();
-        start(TinyHttpd.builder().listen(0).listen(0, TestTls.server().build()).maxWorkers(1).maxConnections(4)
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().listen(0).listen(0, TestTls.server().build()).maxWorkers(1).maxConnections(4)
                 .threadFactory(new ThreadFactory() {
 
                     @Override
@@ -452,7 +452,7 @@ public class TlsTest extends EngineTestBase {
     /** TLS-14: over capacity on a TLS listener closes without a response and the acceptor keeps accepting. */
     @Test
     public void tls14_overCapacityTlsClosesWithoutResponse() throws IOException {
-        start(TinyHttpd.builder().listen(0, TestTls.server().build()).listen(0).maxWorkers(1).maxConnections(1));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().listen(0, TestTls.server().build()).listen(0).maxWorkers(1).maxConnections(1));
         RawConnection busy = RawConnection.tls(server.getPort(0));
         try {
             busy.send("GET /block HTTP/1.1\r\nHost: x\r\n\r\n");

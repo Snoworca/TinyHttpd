@@ -24,7 +24,7 @@ public class ProbeServer {
     final TinyHttpd server;
 
     ProbeServer() {
-        this(TinyHttpd.builder());
+        this(com.snoworca.tinyhttpd.testing.TestServers.builder());
     }
 
     ProbeServer(TinyHttpd.Builder builder) {

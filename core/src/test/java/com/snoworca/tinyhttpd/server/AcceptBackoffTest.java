@@ -31,7 +31,7 @@ public class AcceptBackoffTest {
     @Test
     public void failingAcceptDoesNotSpin() throws Exception {
         final AtomicInteger calls = new AtomicInteger();
-        ServerConfig config = TinyHttpd.builder().handler(new Handler() {
+        ServerConfig config = com.snoworca.tinyhttpd.testing.TestServers.builder().handler(new Handler() {
 
             @Override
             public void handle(Request request, Response response) {

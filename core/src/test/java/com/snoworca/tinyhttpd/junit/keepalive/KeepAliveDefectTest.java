@@ -38,7 +38,7 @@ public class KeepAliveDefectTest {
 
     @Before
     public void startServer() throws IOException {
-        server = new ProbeServer(tls ? TinyHttpd.builder().tls(TestTls.server().build()) : TinyHttpd.builder());
+        server = new ProbeServer(tls ? com.snoworca.tinyhttpd.testing.TestServers.builder().tls(TestTls.server().build()) : com.snoworca.tinyhttpd.testing.TestServers.builder());
         server.start();
         port = server.port();
     }

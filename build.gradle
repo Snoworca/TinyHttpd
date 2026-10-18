@@ -26,16 +26,13 @@ configure(subprojects.findAll { it.path in libraryProjects }) {
         options.compilerArgs += ['-Xlint:-options']
     }
 
-    // P0-05: main code warnings are reported; -Werror waits until the old packages are deleted (P8-05).
+    // P0-05/P8-05: main code compiles without warnings.
     tasks.named('compileJava').configure {
-        options.compilerArgs += ['-Xlint:all', '-Xlint:-serial']
+        options.compilerArgs += ['-Xlint:all', '-Xlint:-serial', '-Werror']
     }
 
     javadoc {
         options.addStringOption('Xdoclint:all,-missing', '-quiet')
-        exclude 'com/snoworca/tinyhttpd/protocols/**', 'com/snoworca/tinyhttpd/util/**',
-                'com/snoworca/tinyhttpd/router/RouterNanoHTTPD*', 'com/snoworca/tinyhttpd/webserver/**',
-                'com/snoworca/tinyhttpd/samples/**'
     }
 
     // Android 5.0 (API 21) is the minimum runtime: fail the build on any API that API 21 lacks.

@@ -19,7 +19,7 @@ import com.snoworca.tinyhttpd.http.Response;
 public class ThreadModelUnitTest {
 
     private static ServerConfig config() {
-        return TinyHttpd.builder().handler(new Handler() {
+        return com.snoworca.tinyhttpd.testing.TestServers.builder().handler(new Handler() {
 
             @Override
             public void handle(Request request, Response response) {

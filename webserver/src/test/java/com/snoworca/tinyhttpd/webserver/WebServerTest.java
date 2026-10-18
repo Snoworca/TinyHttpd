@@ -73,7 +73,7 @@ public class WebServerTest {
     }
 
     private void start(StaticFileHandler h, CorsFilter cors) throws IOException {
-        TinyHttpd.Builder b = TinyHttpd.builder().port(0).hostCheck(false).handler(h);
+        TinyHttpd.Builder b = com.snoworca.tinyhttpd.testing.TestServers.builder().port(0).hostCheck(false).handler(h);
         if (cors != null) {
             b.filter(cors);
         }

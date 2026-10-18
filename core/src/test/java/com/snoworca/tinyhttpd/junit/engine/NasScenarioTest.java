@@ -170,7 +170,7 @@ public class NasScenarioTest extends EngineTestBase {
     @Test
     public void nasRoundTrip() throws Exception {
         hostCheck = true;
-        start(TinyHttpd.builder().filter(auth));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(auth));
         final String base = "http://127.0.0.1:" + port;
         final java.util.List<String> cookies = new java.util.concurrent.CopyOnWriteArrayList<String>();
         OkHttpClient client = Clients.okHttp().newBuilder().cookieJar(new okhttp3.CookieJar() {

@@ -35,8 +35,8 @@ public final class Bench {
         long baseHeap = heapAfterGc();
         int baseThreads = threads();
 
-        String engineName = System.getProperty("bench.engine", "new");
-        Engine engine = "old".equals(engineName) ? new OldEngine() : new NewEngine();
+        String engineName = "new"; // the old engine was deleted in P8-05; its numbers stay in baseline.md
+        Engine engine = new NewEngine();
         port = engine.start();
         List<Conn> open = new ArrayList<Conn>();
         long[] lat; // per-request (or per-transfer) latency in ns

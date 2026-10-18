@@ -61,7 +61,7 @@ public class SessionTest {
 
     private void start(SessionFilter f, boolean csrf) throws IOException {
         sessions = f;
-        TinyHttpd.Builder b = TinyHttpd.builder().port(0).hostCheck(false).filter(f).handler(APP);
+        TinyHttpd.Builder b = com.snoworca.tinyhttpd.testing.TestServers.builder().port(0).hostCheck(false).filter(f).handler(APP);
         if (csrf) {
             b.filter(new CsrfFilter());
         }

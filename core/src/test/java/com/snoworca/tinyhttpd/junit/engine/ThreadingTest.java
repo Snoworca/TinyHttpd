@@ -140,7 +140,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th02_overCapacityGets503() throws Exception {
-        start(TinyHttpd.builder().maxWorkers(2).maxConnections(2));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(2).maxConnections(2));
         List<RawConnection> busy = new ArrayList<RawConnection>();
         try {
             busy.add(request(port, "/block"));
@@ -160,7 +160,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th03_idleConnectionIsEvictedForANewOne() throws IOException {
-        start(TinyHttpd.builder().maxWorkers(2).maxConnections(4));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(2).maxConnections(4));
         List<RawConnection> idle = new ArrayList<RawConnection>();
         try {
             for (int i = 0; i < 2; i++) {
@@ -181,7 +181,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th04_slowHeaderGets408() throws Exception {
-        start(TinyHttpd.builder().headerTimeout(500));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().headerTimeout(500));
         final RawConnection c = connect();
         try {
             long start = System.currentTimeMillis();
@@ -211,7 +211,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th05_stalledBodyTimesOut() throws Exception {
-        start(TinyHttpd.builder().bodyReadTimeout(500));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().bodyReadTimeout(500));
         RawConnection c = connect();
         try {
             c.send("POST /read HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\nhello");
@@ -225,7 +225,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th06_stalledWriteIsClosedByWatchdog() throws Exception {
-        start(TinyHttpd.builder().writeTimeout(500));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().writeTimeout(500));
         RawConnection c = connect(4096);
         try {
             c.send("GET /big HTTP/1.1\r\nHost: x\r\n\r\n");
@@ -247,7 +247,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th07_idleTimeout() throws IOException {
-        start(TinyHttpd.builder().idleTimeout(500));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().idleTimeout(500));
         RawConnection c = request(port, "/hello");
         try {
             c.read();
@@ -262,7 +262,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th08_adaptiveIdleTimeoutUnderLoad() throws Exception {
-        start(TinyHttpd.builder().maxWorkers(10).maxConnections(20).idleTimeout(10000).idleTimeoutUnderLoad(300));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(10).maxConnections(20).idleTimeout(10000).idleTimeoutUnderLoad(300));
         List<RawConnection> cs = new ArrayList<RawConnection>();
         try {
             RawConnection idle = request(port, "/hello");
@@ -290,7 +290,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th09_queuedConnectionTimesOutWith503() throws Exception {
-        start(TinyHttpd.builder().maxWorkers(1).maxConnections(2).queueWaitTimeout(500));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(2).queueWaitTimeout(500));
         RawConnection busy = request(port, "/block");
         try {
             awaitBusy(1);
@@ -361,7 +361,7 @@ public class ThreadingTest extends EngineTestBase {
     @Test
     public void th12_bindFailureIsThrownByStart() throws IOException {
         start();
-        TinyHttpd second = TinyHttpd.builder().port(port).handler(router).build();
+        TinyHttpd second = com.snoworca.tinyhttpd.testing.TestServers.builder().port(port).handler(router).build();
         try {
             second.start();
             second.stop();
@@ -375,7 +375,7 @@ public class ThreadingTest extends EngineTestBase {
     public void th14_startStopDoesNotLeak() throws Exception {
         int before = tinyThreads();
         for (int i = 0; i < 100; i++) {
-            TinyHttpd.Builder b = TinyHttpd.builder().port(0).hostCheck(false).handler(router);
+            TinyHttpd.Builder b = com.snoworca.tinyhttpd.testing.TestServers.builder().port(0).hostCheck(false).handler(router);
             TinyHttpd s = (tls ? b.tls(TestTls.server().build()) : b).build();
             s.start();
             RawConnection c = request(s.getPort(), "/hello");
@@ -403,7 +403,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th15_okHttpAroundIdleClose() throws Exception {
-        start(TinyHttpd.builder().idleTimeout(200));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().idleTimeout(200));
         for (boolean retry : new boolean[] {false, true}) {
             OkHttpClient client = Clients.okHttp(retry, null);
             int failures = 0;
@@ -428,7 +428,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th16_perAddressLimit() throws Exception {
-        start(TinyHttpd.builder().maxConnectionsPerAddress(32));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxConnectionsPerAddress(32));
         List<RawConnection> cs = new ArrayList<RawConnection>();
         try {
             for (int i = 0; i < 32; i++) {
@@ -447,7 +447,7 @@ public class ThreadingTest extends EngineTestBase {
 
     @Test
     public void th17_httpUrlConnectionReuseAndRecovery() throws Exception {
-        start(TinyHttpd.builder().idleTimeout(300));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().idleTimeout(300));
         for (int i = 0; i < 5; i++) {
             assertEquals("hello", jdkGet("/hello"));
         }

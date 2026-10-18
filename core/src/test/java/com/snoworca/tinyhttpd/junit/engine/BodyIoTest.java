@@ -390,7 +390,7 @@ public class BodyIoTest extends EngineTestBase {
         final List<String> severe = Collections.synchronizedList(new ArrayList<String>());
         fileRoutes();
         multipartEcho(MultipartLimits.of(Long.MAX_VALUE, 10), false);
-        start(TinyHttpd.builder().logger(new TinyLog() {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().logger(new TinyLog() {
 
             @Override
             public boolean isLoggable(Level level) {
@@ -621,7 +621,7 @@ public class BodyIoTest extends EngineTestBase {
     @Test
     public void io24_io32_gzipCompresses() throws IOException {
         gzipRoutes(10 * 1024, "application/json", null, true);
-        start(TinyHttpd.builder().filter(new GzipFilter()));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new GzipFilter()));
         RawResponse r = gzipGet();
         assertEquals("gzip", r.header("content-encoding"));
         assertEquals("Accept-Encoding", r.header("vary"));
@@ -633,7 +633,7 @@ public class BodyIoTest extends EngineTestBase {
     @Test
     public void io25_alreadyEncoded() throws IOException {
         gzipRoutes(10 * 1024, "application/json", "br", false);
-        start(TinyHttpd.builder().filter(new GzipFilter()));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new GzipFilter()));
         RawResponse r = gzipGet();
         assertEquals("br", r.header("content-encoding"));
         assertEquals(10 * 1024, r.bodyBytes.length);
@@ -642,7 +642,7 @@ public class BodyIoTest extends EngineTestBase {
     @Test
     public void io27_smallResponseIsNotCompressed() throws IOException {
         gzipRoutes(100, "text/plain", null, false);
-        start(TinyHttpd.builder().filter(new GzipFilter()));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new GzipFilter()));
         RawResponse r = gzipGet();
         assertNull(r.header("content-encoding"));
         assertEquals("100", r.header("content-length"));
@@ -668,7 +668,7 @@ public class BodyIoTest extends EngineTestBase {
                 out.write(new byte[2048]);
             }
         });
-        start(TinyHttpd.builder().filter(new GzipFilter(2)));
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().filter(new GzipFilter(2)));
         final List<String> encodings = Collections.synchronizedList(new ArrayList<String>());
         Thread[] ts = new Thread[3];
         for (int i = 0; i < 3; i++) {

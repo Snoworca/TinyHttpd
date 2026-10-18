@@ -7,7 +7,7 @@
 
 ## 작업
 
-### P8-01 router `[ ]`
+### P8-01 router `[x]` (2026-10-18)
 - 현재: `RouterNanoHTTPD`(674줄). `UriResponder` 계층, 요청마다 `Class<?>` 리플렉션으로 핸들러 생성, 우선순위 정책 3종.
 - 새 구조: `com.snoworca.tinyhttpd.router.Router implements Handler`.
   - 등록: `get/post/put/delete/head/options/patch(pattern, Handler)`, `route(method, pattern, Handler)`, `mount(prefix, Handler)`
@@ -21,7 +21,7 @@
 - 테스트: 구 `TestNanolets`, `AppNanolets`의 시나리오를 새 API로 다시 쓴다.
 - 완료 조건: MOD-01~06 통과.
 
-### P8-02 webserver `[ ]`
+### P8-02 webserver `[x]` (2026-10-18)
 - 현재: `SimpleWebServer`(606줄) 하나에 디렉터리 목록, Range, ETag, CORS, 플러그인 디스패치, CLI가 섞여 있다. `InternalRewrite`는 `Response`를 상속한 편법이다.
 - 새 구조:
 
@@ -39,7 +39,7 @@
 - 테스트: 구 `TestHttpServer`, `TestCorsHttpServer*`, `DummyPlugin`을 새 API로 다시 쓴다.
 - 완료 조건: MOD-07~12, MOD-30, SEC-T02 통과.
 
-### P8-03 websocket `[ ]`
+### P8-03 websocket `[x]` (2026-10-18)
 - 핸드셰이크: `WebSocketHandler implements Handler`.
   - 검사: `GET`, HTTP/1.1, `Upgrade: websocket`(토큰), `Connection`에 `upgrade` 토큰, `Sec-WebSocket-Version: 13`, `Sec-WebSocket-Key`(16바이트 base64). 실패하면 400. 버전이 다르면 426 + `Sec-WebSocket-Version: 13`(RFC 6455 §4.4).
   - `Origin` 검사: 기본은 **동일 출처만** 허용한다(`Origin`의 호스트·포트가 요청의 `getServerName()`/`getServerPort()`와 같음). `Origin` 헤더가 없으면(브라우저가 아닌 클라이언트) 허용한다. `allowedOrigins(...)`로 목록을 지정하거나 `allowAnyOrigin()`으로 끌 수 있다. P9 위협 모델의 CSWSH(악성 웹 페이지)를 기본으로 막기 위해서다(SEC-09). 거부하면 403. **한계**: DNS rebinding에서는 `Origin`과 `Host`가 모두 공격자 도메인이라 동일 출처 검사를 통과한다. 이 공격은 `HostAllowlistFilter`(P4-12)만 막는다.
@@ -60,7 +60,7 @@
 - 테스트: 구 `EchoWebSocketsTest`(Jetty WebSocket 클라이언트 9.3)를 OkHttp WebSocket 클라이언트로 바꾼다. 테스트 의존성 하나를 줄인다.
 - 완료 조건: MOD-13~19, MOD-26~29 통과.
 
-### P8-04 session 모듈 (신규, D-03) `[ ]`
+### P8-04 session 모듈 (신규, D-03) `[x]` (2026-10-18)
 - 모듈 `session/`(`tinyhttpd-session`). core만 의존한다.
 - `SessionFilter`: 쿠키(기본 이름 `TSESSIONID`, `HttpOnly`, `SameSite=Lax`, TLS면 `Secure`)로 기존 세션을 찾는다. **세션은 앱이 요청할 때만 만든다**(`Session.get(req)`는 없으면 `null`, `Session.create(req, res)`가 만든다). 쿠키 없는 요청마다 세션을 만들면 공격자가 요청만으로 상한을 채워 정상 세션을 밀어낼 수 있다.
 - 세션 ID: `SecureRandom` 128비트 이상, URL-safe 인코딩. 로그인 후 ID 재발급 API(`Session.rotate(req, res)`)로 세션 고정 공격을 막는다(P9 SEC-10).
@@ -69,7 +69,7 @@
 - `CsrfFilter`(P9 SEC-15): 안전하지 않은 메서드(POST/PUT/PATCH/DELETE)에서 `Origin`(없으면 `Referer`)이 허용 출처인지 확인한다. 둘 다 없으면 세션의 토큰 헤더(`X-CSRF-Token`)를 요구한다. 실패하면 403. DNS rebinding에 대한 한계는 WebSocket `Origin` 검사와 같다(`HostAllowlistFilter`에 의존).
 - 완료 조건: MOD-20~25 통과.
 
-### P8-05 구 코드 삭제 `[ ]`
+### P8-05 구 코드 삭제 `[x]` (2026-10-18)
 - 모든 모듈이 새 API로 옮겨진 뒤 한 커밋으로 삭제한다.
   - core: `protocols.http` 패키지 전체(`NanoHTTPD`, `HTTPSession`, `IHTTPSession`, `ClientHandler`, `ServerRunnable`, `response.*`, `content.*`, `request.Method`, `sockets.*`, `tempfiles.*`, `threading.*`), `util.ServerRunner`, `util.IHandler`, `util.IFactory`, `util.IFactoryThrowing`
   - 리소스: `META-INF/tinyhttpd/*.properties` (P4-08이 대체)
@@ -116,7 +116,23 @@
 
 ## 구 테스트 이전 표
 
-(P8-05에서 채운다. 열: 구 테스트 클래스, 시나리오 요약, 새 테스트 ID 또는 "의미 없음"과 이유.)
+| 구 테스트 | 시나리오 | 새 테스트 / 판단 |
+|---|---|---|
+| `HttpGetRequestTest`, `HttpPostRequestTest`, `HttpPutRequestTest`, `HttpDeleteRequestTest`, `HttpHeadRequestTest` | 메서드별 요청과 응답 | RQ-01~28, RS-01~24, IO-12 |
+| `HttpParsingTest`, `BadRequestTest`, `InvalidRequestTest` | 요청 줄·헤더 파싱, 퍼센트 디코딩 | RQ-01~27, API-09~14, 퍼징(P1-14) |
+| `HttpKeepAliveTest`, `HttpChunkedResponseTest` | 연결 유지, chunked 응답 | KA/KB, RS-05, RS-16 |
+| `CookieTest`, `CookieHandlerTest`, `CookieIntegrationTest` | 쿠키 파싱·직렬화 | API-15, API-16, MOD-20 |
+| `GetAndPostIntegrationTest`, `PutStreamIntegrationTest` | 쿼리, form, 업로드 | API-14, IO-01~13 |
+| `GZipIntegrationTest` | text/* 자동 gzip | IO-24~27, IO-32, IO-33 (정책이 바뀌어 기본 압축 없음) |
+| `ShutdownTest` | 정지 | TH-10~12, TH-14 |
+| `HttpSSLServerTest`, `SSLServerSocketFactoryTest`, `LoadKeyStoreTest` | 구 TLS | TLS-01~14 |
+| `MimeTest` | properties MIME 표 | API-18 |
+| `HttpSessionTest`, `HttpSessionHeadersTest`, `HttpServerTest`, `StatusTest`, `ServerSocketFactoryTest`, `JavaIOTempDirExistTest` | 구 `HTTPSession`·`Status`·소켓 팩토리·임시 파일 구조 | 의미 없음: 해당 구조가 없다(임시 파일은 SEC-12에 따라 만들지 않는다) |
+| router `TestNanolets`, `AppNanolets` | 라우팅, 우선순위 정책 3종, `GeneralHandler` | MOD-01~06. 우선순위 정책과 `GeneralHandler`(XSS)는 없앴다 |
+| webserver `TestHttpServer`, `TestCorsHttpServer*`, `DummyPlugin` | 정적 파일, CORS, 플러그인 | MOD-07~12, MOD-30, SEC-T02 |
+| websocket `EchoWebSocketsTest`, `WebSocketResponseHandlerTest` | 에코, 핸드셰이크 | MOD-13~19, MOD-26~29 (Jetty 클라이언트, Mockito 제거) |
+
+- 2026-10-18: macOS에서 와일드카드(IPv6 이중 스택) bind는 다른 프로세스가 `127.0.0.1`에서 듣는 포트를 받을 수 있어 테스트가 엉뚱한 프로세스에 접속했다. 테스트 서버는 `TestServers.builder()`로 `127.0.0.1`에 bind한다.
 
 ## 완료 조건 (단계)
 - MOD 테스트가 전부 통과한다. 구 패키지가 삭제되었다. 구 테스트 이전 표가 채워졌다.

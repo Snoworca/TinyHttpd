@@ -52,7 +52,7 @@ public class ParserFuzzTest extends EngineTestBase {
                 text(res, "ok");
             }
         });
-        start(TinyHttpd.builder().lingerTimeout(200).headerTimeout(1000).bodyReadTimeout(1000).logger(new TinyLog() {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().lingerTimeout(200).headerTimeout(1000).bodyReadTimeout(1000).logger(new TinyLog() {
 
             @Override
             public boolean isLoggable(Level level) {

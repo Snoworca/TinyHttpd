@@ -163,7 +163,7 @@ public class WebSocketTest {
 
     @Test
     public void mod13_okHttpEcho() throws Exception {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         OkHttpClient client = Clients.okHttp();
         final BlockingQueue<Object> got = new ArrayBlockingQueue<Object>(10);
         okhttp3.WebSocket ws = client.newWebSocket(new okhttp3.Request.Builder().url("ws://127.0.0.1:" + port + "/ws")
@@ -201,7 +201,7 @@ public class WebSocketTest {
 
     @Test
     public void mod14_wrongVersion() throws IOException {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         RawConnection c = new RawConnection(port);
         try {
             c.send(HANDSHAKE.replace("Version: 13", "Version: 8") + "\r\n");
@@ -215,7 +215,7 @@ public class WebSocketTest {
 
     @Test
     public void mod15_unmaskedFrame() throws IOException {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         RawConnection c = rawOpen();
         try {
             c.send(frame(1, "hi".getBytes("UTF-8"), false, true));
@@ -229,7 +229,7 @@ public class WebSocketTest {
 
     @Test
     public void mod16_tooLargeMessage() throws Exception {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         RawConnection c = rawOpen();
         try {
             byte[] head = frame(2, new byte[0], true, true);
@@ -247,7 +247,7 @@ public class WebSocketTest {
 
     @Test
     public void mod17_invalidUtf8() throws IOException {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         RawConnection c = rawOpen();
         try {
             c.send(frame(1, new byte[] {(byte) 0xc3, 0x28}, true, true));
@@ -260,7 +260,7 @@ public class WebSocketTest {
 
     @Test
     public void mod18_silentClientIsDropped() throws Exception {
-        start(echoHandler().pingInterval(300), TinyHttpd.builder());
+        start(echoHandler().pingInterval(300), com.snoworca.tinyhttpd.testing.TestServers.builder());
         RawConnection c = rawOpen();
         try {
             Object[] ping = readFrame(c);
@@ -275,7 +275,7 @@ public class WebSocketTest {
 
     @Test
     public void mod19_upgradeLimit() throws IOException {
-        start(echoHandler(), TinyHttpd.builder().maxUpgradedConnections(1));
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder().maxUpgradedConnections(1));
         RawConnection a = rawOpen();
         RawConnection b = new RawConnection(port);
         try {
@@ -289,7 +289,7 @@ public class WebSocketTest {
 
     @Test
     public void mod26_originCheck() throws IOException {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         RawConnection c = new RawConnection(port);
         try {
             c.send(HANDSHAKE + "Origin: http://evil.example\r\n\r\n");
@@ -310,7 +310,7 @@ public class WebSocketTest {
 
     @Test
     public void mod27_concurrentSendsDoNotInterleave() throws Exception {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         final RawConnection c = rawOpen();
         try {
             assertTrue(opened.await(2, TimeUnit.SECONDS));
@@ -353,7 +353,7 @@ public class WebSocketTest {
 
     @Test
     public void mod28_stalledFrameHeaderClosesConnection() throws Exception {
-        start(echoHandler().pingInterval(500), TinyHttpd.builder());
+        start(echoHandler().pingInterval(500), com.snoworca.tinyhttpd.testing.TestServers.builder());
         RawConnection c = rawOpen();
         try {
             c.send(new byte[] {(byte) 0x81, (byte) 0x85});
@@ -367,7 +367,7 @@ public class WebSocketTest {
 
     @Test
     public void mod29_stopSendsGoingAway() throws Exception {
-        start(echoHandler(), TinyHttpd.builder());
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
         final RawConnection c = rawOpen();
         try {
             assertTrue(opened.await(2, TimeUnit.SECONDS));

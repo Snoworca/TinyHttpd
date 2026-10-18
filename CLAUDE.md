@@ -59,10 +59,9 @@ NanoHttpd(https://github.com/NanoHttpd/nanohttpd)를 포크해 대대적으로 �
 
 ## 저장소 구성
 
-- 모듈: `core/`(`tinyhttpd-core`), `webserver/`, `websocket/`, `router/`(원본 nanolets). 원본의 samples, fileupload, markdown-plugin, relocation, Maven 빌드는 제거했다.
+- 모듈: `core/`(`tinyhttpd-core`), `webserver/`, `websocket/`, `router/`, `session/`. 모두 새 API(`com.snoworca.tinyhttpd.http`) 위에 다시 썼고 원본 NanoHttpd 코드는 남아 있지 않다(P8-05). `tools/bench`는 측정 도구다.
 - 빌드: Gradle 8.14.3 wrapper 하나로 통일(`./gradlew build`). 루트 `build.gradle`이 모든 모듈을 설정하고, 모듈별 build 파일은 없다.
 - `--release 8`로 컴파일한다. animal-sniffer(`android-api-level-21:5.0.1_r2`)가 `main` 소스를 검사한다.
-- 클래스명(`NanoHTTPD`, `NanoWSD`, `RouterNanoHTTPD` 등)은 아직 원본 그대로다. API 재설계 때 바꾼다.
 
 ## 테스트 규칙
 

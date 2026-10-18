@@ -195,12 +195,9 @@ public class SocketIoSpikeTest {
 
     /** Returns {server SSLSocket, client SSLSocket, underlying plain server socket}. */
     private Socket[] tlsPair() throws Exception {
-        KeyStore ks = KeyStore.getInstance("JKS");
-        try (InputStream in = getClass().getResourceAsStream("/keystore.jks")) {
-            ks.load(in, "password".toCharArray());
-        }
+        KeyStore ks = com.snoworca.tinyhttpd.testing.TestTls.keyStore("server.p12");
         KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-        kmf.init(ks, "password".toCharArray());
+        kmf.init(ks, com.snoworca.tinyhttpd.testing.TestTls.PASSWORD.toCharArray());
         SSLContext serverCtx = SSLContext.getInstance("TLS");
         serverCtx.init(kmf.getKeyManagers(), null, null);
         SSLContext clientCtx = SSLContext.getInstance("TLS");
