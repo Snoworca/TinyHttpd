@@ -251,7 +251,7 @@ public class RequestParsingTest extends EngineTestBase {
                         + req.getServerPort());
             }
         });
-        assertEquals("/p|q=1|h|80", exchange("GET http://h/p?q=1 HTTP/1.1\r\nHost: other:81\r\n\r\n").body);
+        assertEquals("/p|q=1|h|" + (tls ? 443 : 80), exchange("GET http://h/p?q=1 HTTP/1.1\r\nHost: other:81\r\n\r\n").body);
     }
 
     @Test

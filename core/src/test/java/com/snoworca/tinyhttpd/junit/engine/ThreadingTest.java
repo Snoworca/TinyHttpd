@@ -16,6 +16,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import javax.net.ssl.HttpsURLConnection;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -26,6 +28,7 @@ import com.snoworca.tinyhttpd.http.Request;
 import com.snoworca.tinyhttpd.http.Response;
 import com.snoworca.tinyhttpd.testing.Clients;
 import com.snoworca.tinyhttpd.testing.RawConnection;
+import com.snoworca.tinyhttpd.testing.TestTls;
 import com.snoworca.tinyhttpd.testing.RawConnection.RawResponse;
 
 import okhttp3.OkHttpClient;
@@ -94,8 +97,8 @@ public class ThreadingTest extends EngineTestBase {
         });
     }
 
-    private static RawConnection request(int port, String path) throws IOException {
-        RawConnection c = new RawConnection(port);
+    private RawConnection request(int port, String path) throws IOException {
+        RawConnection c = new RawConnection(port, 0, tls ? TestTls.socketFactory() : null);
         c.send("GET " + path + " HTTP/1.1\r\nHost: x\r\n\r\n");
         return c;
     }
@@ -175,7 +178,7 @@ public class ThreadingTest extends EngineTestBase {
     @Test
     public void th04_slowHeaderGets408() throws Exception {
         start(TinyHttpd.builder().headerTimeout(500));
-        final RawConnection c = new RawConnection(port);
+        final RawConnection c = connect();
         try {
             long start = System.currentTimeMillis();
             Thread sender = new Thread(new Runnable() {
@@ -205,7 +208,7 @@ public class ThreadingTest extends EngineTestBase {
     @Test
     public void th05_stalledBodyTimesOut() throws Exception {
         start(TinyHttpd.builder().bodyReadTimeout(500));
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("POST /read HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\nhello");
             String state = c.awaitClose(3000);
@@ -219,7 +222,7 @@ public class ThreadingTest extends EngineTestBase {
     @Test
     public void th06_stalledWriteIsClosedByWatchdog() throws Exception {
         start(TinyHttpd.builder().writeTimeout(500));
-        RawConnection c = new RawConnection(port, 4096);
+        RawConnection c = connect(4096);
         try {
             c.send("GET /big HTTP/1.1\r\nHost: x\r\n\r\n");
             long deadline = System.currentTimeMillis() + 3000;
@@ -337,7 +340,7 @@ public class ThreadingTest extends EngineTestBase {
     @Test
     public void th11_stopInterruptsStuckHandlers() throws Exception {
         start();
-        RawConnection reading = new RawConnection(port);
+        RawConnection reading = connect();
         reading.send("POST /read HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\n");
         RawConnection sleeping = request(port, "/block");
         awaitBusy(2);
@@ -368,7 +371,8 @@ public class ThreadingTest extends EngineTestBase {
     public void th14_startStopDoesNotLeak() throws Exception {
         int before = tinyThreads();
         for (int i = 0; i < 100; i++) {
-            TinyHttpd s = TinyHttpd.builder().port(0).hostCheck(false).handler(router).build();
+            TinyHttpd.Builder b = TinyHttpd.builder().port(0).hostCheck(false).handler(router);
+            TinyHttpd s = (tls ? b.tls(TestTls.server().build()) : b).build();
             s.start();
             RawConnection c = request(s.getPort(), "/hello");
             c.read();
@@ -402,7 +406,7 @@ public class ThreadingTest extends EngineTestBase {
             try {
                 for (int i = 0; i < 30; i++) {
                     try {
-                        Clients.get(client, "http://127.0.0.1:" + port + "/hello");
+                        Clients.get(client, url("/hello"));
                     } catch (IOException e) {
                         failures++;
                     }
@@ -450,7 +454,10 @@ public class ThreadingTest extends EngineTestBase {
     }
 
     private String jdkGet(String path) throws IOException {
-        HttpURLConnection c = (HttpURLConnection) new URL("http://127.0.0.1:" + port + path).openConnection();
+        HttpURLConnection c = (HttpURLConnection) new URL(url(path)).openConnection();
+        if (c instanceof HttpsURLConnection) {
+            ((HttpsURLConnection) c).setSSLSocketFactory(TestTls.socketFactory());
+        }
         InputStream in = c.getInputStream();
         byte[] b = new byte[64];
         int n = in.read(b);

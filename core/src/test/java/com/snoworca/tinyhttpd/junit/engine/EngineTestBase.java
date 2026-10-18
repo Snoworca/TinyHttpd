@@ -14,6 +14,7 @@ import com.snoworca.tinyhttpd.http.HttpException;
 import com.snoworca.tinyhttpd.http.Request;
 import com.snoworca.tinyhttpd.http.Response;
 import com.snoworca.tinyhttpd.testing.RawConnection;
+import com.snoworca.tinyhttpd.testing.TestTls;
 
 /** Starts a server whose handler dispatches on the exact path to handlers registered by the test. */
 public abstract class EngineTestBase {
@@ -29,6 +30,9 @@ public abstract class EngineTestBase {
 
     /** Tests send {@code Host: x}; the host check (API-20/21) is tested on its own. */
     protected boolean hostCheck;
+
+    /** Runs the suite over TLS; set by the {@code *TlsTest} subclasses (P7-08). */
+    protected boolean tls;
 
     protected final Handler router = new Handler() {
 
@@ -50,6 +54,9 @@ public abstract class EngineTestBase {
     }
 
     protected void start(TinyHttpd.Builder builder) throws IOException {
+        if (tls) {
+            builder.tls(TestTls.server().build());
+        }
         server = builder.port(0).handler(router).hostCheck(hostCheck).build();
         server.start();
         port = server.getPort();
@@ -63,7 +70,15 @@ public abstract class EngineTestBase {
     }
 
     protected RawConnection connect() throws IOException {
-        return new RawConnection(port);
+        return connect(0);
+    }
+
+    protected RawConnection connect(int receiveBufferBytes) throws IOException {
+        return new RawConnection(port, receiveBufferBytes, tls ? TestTls.socketFactory() : null);
+    }
+
+    protected String url(String path) {
+        return (tls ? "https" : "http") + "://127.0.0.1:" + port + path;
     }
 
     protected static void text(Response res, String s) throws IOException {

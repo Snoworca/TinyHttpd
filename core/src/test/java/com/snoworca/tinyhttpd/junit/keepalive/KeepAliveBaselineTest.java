@@ -13,7 +13,9 @@ import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import com.snoworca.tinyhttpd.TinyHttpd;
+import com.snoworca.tinyhttpd.testing.Clients;
 import com.snoworca.tinyhttpd.testing.RawConnection;
+import com.snoworca.tinyhttpd.testing.TestTls;
 import com.snoworca.tinyhttpd.testing.RawConnection.RawResponse;
 
 import okhttp3.MediaType;
@@ -40,12 +42,20 @@ public class KeepAliveBaselineTest {
 
     private OkHttpClient client;
 
+    /** Runs the suite over TLS; set by {@link KeepAliveBaselineTlsTest} (P7-08). */
+    protected boolean tls;
+
     @Before
     public void setUp() throws IOException {
-        server = new ProbeServer(TinyHttpd.builder().idleTimeout(IDLE));
+        TinyHttpd.Builder b = TinyHttpd.builder().idleTimeout(IDLE);
+        server = new ProbeServer(tls ? b.tls(TestTls.server().build()) : b);
         server.start();
         port = server.port();
-        client = new OkHttpClient.Builder().readTimeout(10, TimeUnit.SECONDS).build();
+        client = Clients.trustTestCertificate(new OkHttpClient.Builder()).readTimeout(10, TimeUnit.SECONDS).build();
+    }
+
+    private RawConnection connect() throws IOException {
+        return new RawConnection(port, 0, tls ? TestTls.socketFactory() : null);
     }
 
     @After
@@ -67,7 +77,7 @@ public class KeepAliveBaselineTest {
     /** KB-02: two GET requests written in one packet both get answered in order. */
     @Test
     public void kb02_pipelinedGetsAreAnsweredInOrder() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\nGET /second HTTP/1.1\r\nHost: x\r\n\r\n");
             assertEquals("hello", c.read().body);
@@ -80,7 +90,7 @@ public class KeepAliveBaselineTest {
     /** KB-03: Connection: close from the client is answered with close and the server closes. */
     @Test
     public void kb03_clientConnectionCloseIsHonored() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET /hello HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
             RawResponse r = c.read();
@@ -94,7 +104,7 @@ public class KeepAliveBaselineTest {
     /** KB-04: an idle connection is closed by the server after the socket read timeout. */
     @Test
     public void kb04_idleConnectionClosedAfterReadTimeout() throws IOException {
-        RawConnection c = new RawConnection(port);
+        RawConnection c = connect();
         try {
             c.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
             c.read();
@@ -130,7 +140,7 @@ public class KeepAliveBaselineTest {
     }
 
     private String get(String path) throws IOException {
-        Response r = client.newCall(new Request.Builder().url("http://127.0.0.1:" + port + path).build()).execute();
+        Response r = client.newCall(new Request.Builder().url((tls ? "https" : "http") + "://127.0.0.1:" + port + path).build()).execute();
         try {
             return r.body().string();
         } finally {
@@ -140,7 +150,7 @@ public class KeepAliveBaselineTest {
 
     private String post(String path, String body) throws IOException {
         RequestBody rb = RequestBody.create(body, MediaType.get("text/plain"));
-        Response r = client.newCall(new Request.Builder().url("http://127.0.0.1:" + port + path).post(rb).build()).execute();
+        Response r = client.newCall(new Request.Builder().url((tls ? "https" : "http") + "://127.0.0.1:" + port + path).post(rb).build()).execute();
         try {
             return r.body().string();
         } finally {
