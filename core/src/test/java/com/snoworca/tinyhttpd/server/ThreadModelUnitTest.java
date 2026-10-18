@@ -27,11 +27,15 @@ public class ThreadModelUnitTest {
         }).workerStackBytes(128 * 1024).build().getConfig();
     }
 
+    private static ServerConfig.Listener cfgListener(HttpServer server) {
+        return server.config.listeners.get(0);
+    }
+
     @Test
     public void evictionAndWorkerRaceHasOneWinner() throws Exception {
         HttpServer server = new HttpServer(config());
         for (int round = 0; round < 1000; round++) {
-            final Connection c = new Connection(server, new Socket(), null);
+            final Connection c = new Connection(server, new Socket(), cfgListener(server), null);
             final AtomicInteger wins = new AtomicInteger();
             final CountDownLatch go = new CountDownLatch(1);
             Thread[] ts = new Thread[2];

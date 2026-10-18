@@ -18,6 +18,22 @@ import com.snoworca.tinyhttpd.log.TinyLog;
  */
 public final class ServerConfig {
 
+    /** A listening socket: plain HTTP when {@code tls} is null. */
+    public static final class Listener {
+
+        public final InetAddress bindAddress;
+        public final int port;
+        public final TlsConfig tls;
+
+        Listener(InetAddress bindAddress, int port, TlsConfig tls) {
+            this.bindAddress = bindAddress;
+            this.port = port;
+            this.tls = tls;
+        }
+    }
+
+    /** Listeners sharing the worker pool, registry, watchdog and limits. */
+    public final List<Listener> listeners;
     public final int port;
     public final InetAddress bindAddress;
     public final Handler handler;
@@ -64,6 +80,14 @@ public final class ServerConfig {
     public final int maxUpgradedConnections;
 
     ServerConfig(TinyHttpd.Builder b) {
+        List<Listener> ls = new ArrayList<Listener>();
+        for (Listener l : b.listeners) {
+            ls.add(l);
+        }
+        if (ls.isEmpty()) {
+            ls.add(new Listener(b.bindAddress, b.port, b.tls));
+        }
+        listeners = Collections.unmodifiableList(ls);
         port = b.port;
         bindAddress = b.bindAddress;
         handler = b.handler;

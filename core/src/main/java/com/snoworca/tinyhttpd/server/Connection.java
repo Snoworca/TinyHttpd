@@ -46,6 +46,8 @@ final class Connection {
 
     final WorkerPool.Worker worker;
 
+    final ServerConfig.Listener listener;
+
     InputBuffer in;
 
     private OutputStream out;
@@ -73,8 +75,9 @@ final class Connection {
     /** The connection must close after the current response. */
     boolean mustClose;
 
-    Connection(HttpServer server, Socket raw, WorkerPool.Worker worker) {
+    Connection(HttpServer server, Socket raw, ServerConfig.Listener listener, WorkerPool.Worker worker) {
         this.server = server;
+        this.listener = listener;
         this.cfg = server.config;
         this.raw = raw;
         this.socket = raw;
@@ -93,7 +96,7 @@ final class Connection {
     void run() {
         try {
             raw.setTcpNoDelay(true);
-            if (cfg.tls != null) {
+            if (listener.tls != null) {
                 setPhase(HANDSHAKING);
                 socket = Tls.handshake(this);
                 if (socket == null) {

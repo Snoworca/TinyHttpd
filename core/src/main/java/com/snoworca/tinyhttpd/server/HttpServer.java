@@ -25,7 +25,7 @@ import com.snoworca.tinyhttpd.ServerStats;
 import com.snoworca.tinyhttpd.log.TinyLog;
 
 /**
- * Internal API, may change without notice. The engine behind {@code TinyHttpd}: one acceptor thread, a bounded
+ * Internal API, may change without notice. The engine behind {@code TinyHttpd}: an acceptor per listener, a bounded
  * worker pool with a wait queue, and a watchdog that enforces write timeouts and evicts idle connections.
  */
 public final class HttpServer {
@@ -55,9 +55,22 @@ public final class HttpServer {
 
     private volatile boolean underLoad;
 
-    private ServerSocket serverSocket;
+    /** A bound listener with its acceptor thread. */
+    final class Bound {
 
-    private Thread acceptor;
+        final ServerConfig.Listener listener;
+
+        final ServerSocket socket;
+
+        Thread acceptor;
+
+        Bound(ServerConfig.Listener listener, ServerSocket socket) {
+            this.listener = listener;
+            this.socket = socket;
+        }
+    }
+
+    private final List<Bound> bound = new ArrayList<Bound>();
 
     private Thread watchdog;
 
@@ -75,7 +88,7 @@ public final class HttpServer {
     /** Opens the listening socket; replaced in tests to simulate accept failures. */
     interface ServerSocketSource {
 
-        ServerSocket open(ServerConfig config) throws IOException;
+        ServerSocket open(ServerConfig.Listener listener) throws IOException;
     }
 
     /** @param config settings */
@@ -89,10 +102,15 @@ public final class HttpServer {
         this.socketSource = source != null ? source : new ServerSocketSource() {
 
             @Override
-            public ServerSocket open(ServerConfig c) throws IOException {
+            public ServerSocket open(ServerConfig.Listener l) throws IOException {
                 ServerSocket ss = new ServerSocket();
                 ss.setReuseAddress(true);
-                ss.bind(new InetSocketAddress(c.bindAddress, c.port), 128);
+                try {
+                    ss.bind(new InetSocketAddress(l.bindAddress, l.port), 128);
+                } catch (IOException e) {
+                    ss.close();
+                    throw e;
+                }
                 return ss;
             }
         };
@@ -113,17 +131,34 @@ public final class HttpServer {
             if (state != NEW) {
                 throw new IllegalStateException("a server can be started once");
             }
-            serverSocket = socketSource.open(config);
+            for (ServerConfig.Listener l : config.listeners) {
+                if (l.tls != null) {
+                    Tls.validate(l.tls);
+                }
+            }
+            try {
+                for (ServerConfig.Listener l : config.listeners) {
+                    bound.add(new Bound(l, socketSource.open(l)));
+                }
+            } catch (IOException | RuntimeException e) {
+                for (Bound b : bound) {
+                    closeQuietly(b.socket);
+                }
+                bound.clear();
+                throw e;
+            }
             state = STARTED;
         }
-        acceptor = new Thread(new Runnable() {
+        for (final Bound b : bound) {
+            b.acceptor = new Thread(new Runnable() {
 
-            @Override
-            public void run() {
-                acceptLoop();
-            }
-        }, "tinyhttpd-acceptor-" + serverSocket.getLocalPort());
-        acceptor.setDaemon(config.daemon);
+                @Override
+                public void run() {
+                    acceptLoop(b);
+                }
+            }, "tinyhttpd-acceptor-" + b.socket.getLocalPort());
+            b.acceptor.setDaemon(config.daemon);
+        }
         watchdog = new Thread(new Runnable() {
 
             @Override
@@ -132,14 +167,20 @@ public final class HttpServer {
             }
         }, "tinyhttpd-watchdog");
         watchdog.setDaemon(true);
-        acceptor.start();
+        for (Bound b : bound) {
+            b.acceptor.start();
+        }
         watchdog.start();
     }
 
-    /** @return the bound port, or the configured one before start */
-    public int getPort() {
-        ServerSocket ss = serverSocket;
-        return ss != null ? ss.getLocalPort() : config.port;
+    /**
+     * @param index listener index
+     * @return the bound port, or the configured one before start
+     */
+    public int getPort(int index) {
+        synchronized (stateLock) {
+            return index < bound.size() ? bound.get(index).socket.getLocalPort() : config.listeners.get(index).port;
+        }
     }
 
     /** @return true between start and the end of stop */
@@ -157,12 +198,12 @@ public final class HttpServer {
 
     // ---------------------------------------------------------------- accept
 
-    void acceptLoop() {
+    void acceptLoop(Bound b) {
         int failures = 0;
         while (state == STARTED) {
             Socket s;
             try {
-                s = serverSocket.accept();
+                s = b.socket.accept();
                 failures = 0;
             } catch (IOException e) {
                 if (state != STARTED) {
@@ -178,10 +219,10 @@ public final class HttpServer {
             accepted.incrementAndGet();
             if (!acquireAddress(s.getInetAddress())) {
                 rejectedPerAddress.incrementAndGet();
-                reject(s, false);
+                reject(s, b.listener, false);
                 continue;
             }
-            pool.submit(s);
+            pool.submit(s, b.listener);
         }
     }
 
@@ -218,11 +259,11 @@ public final class HttpServer {
      * Refuses a socket without a worker: plain listeners get a prebuilt 503, TLS listeners a bare close (the acceptor
      * must not block on a handshake). The socket then lingers on the watchdog so the 503 is not reset.
      */
-    void reject(Socket s, boolean addressCounted) {
+    void reject(Socket s, ServerConfig.Listener listener, boolean addressCounted) {
         if (addressCounted) {
             releaseAddress(s.getInetAddress());
         }
-        if (config.tls != null) {
+        if (listener.tls != null) {
             closeQuietly(s);
             return;
         }
@@ -243,8 +284,8 @@ public final class HttpServer {
     // ---------------------------------------------------------------- connections
 
     /** Runs one connection on the current worker thread. */
-    void runConnection(Socket socket, WorkerPool.Worker worker) {
-        Connection c = new Connection(this, socket, worker);
+    void runConnection(Socket socket, ServerConfig.Listener listener, WorkerPool.Worker worker) {
+        Connection c = new Connection(this, socket, listener, worker);
         registry.add(c);
         try {
             c.run();
@@ -399,7 +440,9 @@ public final class HttpServer {
             }
             state = STOPPING;
         }
-        closeQuietly(serverSocket);
+        for (Bound b : bound) {
+            closeQuietly(b.socket);
+        }
         pool.shutdown();
         long deadline = System.currentTimeMillis() + graceMillis;
         for (Connection c : registry) {
@@ -418,8 +461,10 @@ public final class HttpServer {
         }
         pool.interruptAll();
         try {
-            if (acceptor != null) {
-                acceptor.join(1000);
+            for (Bound b : bound) {
+                if (b.acceptor != null) {
+                    b.acceptor.join(1000);
+                }
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

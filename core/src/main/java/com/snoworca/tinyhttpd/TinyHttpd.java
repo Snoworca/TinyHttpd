@@ -73,9 +73,17 @@ public final class TinyHttpd {
         return server.awaitTermination(millis);
     }
 
-    /** @return the bound port after {@link #start()}, else the configured port */
+    /** @return the first listener's bound port after {@link #start()}, else the configured port */
     public int getPort() {
-        return server.getPort();
+        return server.getPort(0);
+    }
+
+    /**
+     * @param listener index in the order the listeners were added
+     * @return that listener's bound port
+     */
+    public int getPort(int listener) {
+        return server.getPort(listener);
     }
 
     /** @return a snapshot of the counters */
@@ -103,6 +111,7 @@ public final class TinyHttpd {
         ErrorHandler errorHandler = ErrorHandler.PLAIN;
         TinyLog logger = TinyLog.jul("com.snoworca.tinyhttpd");
         TlsConfig tls;
+        final List<ServerConfig.Listener> listeners = new ArrayList<ServerConfig.Listener>();
         ThreadFactory threadFactory;
         boolean daemon = true;
         String serverHeader;
@@ -148,6 +157,40 @@ public final class TinyHttpd {
         public Builder port(int port) {
             this.port = port;
             return this;
+        }
+
+        /**
+         * Adds a listener. With listeners, {@link #port}, {@link #bindAddress} and {@link #tls} are ignored; all
+         * listeners share workers and limits.
+         *
+         * @param address local address, null for all
+         * @param port port, 0 for a free one
+         * @param tls TLS settings, null for plain HTTP
+         * @return this builder
+         */
+        public Builder listen(InetAddress address, int port, TlsConfig tls) {
+            if (port < 0 || port > 65535) {
+                throw new IllegalArgumentException("port out of range: " + port);
+            }
+            listeners.add(new ServerConfig.Listener(address, port, tls));
+            return this;
+        }
+
+        /**
+         * @param port plain HTTP port
+         * @return this builder
+         */
+        public Builder listen(int port) {
+            return listen(bindAddress, port, null);
+        }
+
+        /**
+         * @param port HTTPS port
+         * @param tls TLS settings
+         * @return this builder
+         */
+        public Builder listen(int port, TlsConfig tls) {
+            return listen(bindAddress, port, tls);
         }
 
         /**

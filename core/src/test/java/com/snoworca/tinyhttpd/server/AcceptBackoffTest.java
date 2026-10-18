@@ -40,7 +40,7 @@ public class AcceptBackoffTest {
         HttpServer server = new HttpServer(config, new HttpServer.ServerSocketSource() {
 
             @Override
-            public ServerSocket open(ServerConfig c) throws IOException {
+            public ServerSocket open(ServerConfig.Listener l) throws IOException {
                 return new ServerSocket(0) {
 
                     @Override

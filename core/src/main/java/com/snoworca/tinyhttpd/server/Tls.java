@@ -9,6 +9,11 @@ final class Tls {
     private Tls() {
     }
 
+    /** Fails {@code start()} for settings no provider supports. */
+    static void validate(com.snoworca.tinyhttpd.TlsConfig tls) {
+        throw new UnsupportedOperationException("P7");
+    }
+
     static Socket handshake(Connection c) throws IOException {
         throw new UnsupportedOperationException("P7");
     }

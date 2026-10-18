@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 
+import com.snoworca.tinyhttpd.ServerConfig;
+
 /**
  * Bounded worker pool. Up to {@code maxWorkers} connections run at once (idle keep-alive connections included);
  * up to {@code maxConnections - maxWorkers} more wait in a queue while an idle connection is evicted to free a
@@ -21,21 +23,24 @@ final class WorkerPool {
 
         Socket next;
 
+        ServerConfig.Listener nextListener;
+
         boolean detached;
 
         Thread thread;
 
-        Worker(Socket first) {
+        Worker(Socket first, ServerConfig.Listener listener) {
             this.next = first;
+            this.nextListener = listener;
         }
 
         @Override
         public void run() {
             try {
-                Socket s = takeFirst();
-                while (s != null) {
-                    server.runConnection(s, this);
-                    s = afterConnection(this);
+                Object[] job = take();
+                while (job != null) {
+                    server.runConnection((Socket) job[0], (ServerConfig.Listener) job[1], this);
+                    job = afterConnection(this);
                 }
             } finally {
                 synchronized (lock) {
@@ -46,11 +51,12 @@ final class WorkerPool {
             }
         }
 
-        private Socket takeFirst() {
+        private Object[] take() {
             synchronized (lock) {
-                Socket s = next;
+                Object[] job = {next, nextListener};
                 next = null;
-                return s;
+                nextListener = null;
+                return job[0] == null ? null : job;
             }
         }
     }
@@ -59,10 +65,13 @@ final class WorkerPool {
 
         final Socket socket;
 
+        final ServerConfig.Listener listener;
+
         final long since;
 
-        Queued(Socket socket, long since) {
+        Queued(Socket socket, ServerConfig.Listener listener, long since) {
             this.socket = socket;
+            this.listener = listener;
             this.since = since;
         }
     }
@@ -89,7 +98,7 @@ final class WorkerPool {
         this.factory = factory;
     }
 
-    void submit(Socket s) {
+    void submit(Socket s, ServerConfig.Listener listener) {
         boolean evict = false;
         boolean reject = false;
         synchronized (lock) {
@@ -97,9 +106,9 @@ final class WorkerPool {
                 reject = true;
             } else if (active < server.config.maxWorkers) {
                 active++;
-                dispatch(s);
+                dispatch(s, listener);
             } else if (active + queue.size() < server.config.maxConnections) {
-                queue.add(new Queued(s, System.currentTimeMillis()));
+                queue.add(new Queued(s, listener, System.currentTimeMillis()));
                 evict = true;
             } else {
                 reject = true;
@@ -107,40 +116,41 @@ final class WorkerPool {
         }
         if (reject) {
             server.rejectedOverCapacity.incrementAndGet();
-            server.reject(s, true);
+            server.reject(s, listener, true);
         } else if (evict) {
             server.evictOneIdle();
         }
     }
 
     /** Holding the lock: hands the socket to an idle worker or starts a new one. */
-    private void dispatch(Socket s) {
+    private void dispatch(Socket s, ServerConfig.Listener listener) {
         Worker w = idle.pollLast();
         if (w != null) {
             w.next = s;
+            w.nextListener = listener;
             lock.notifyAll();
             return;
         }
-        startWorker(s);
+        startWorker(s, listener);
     }
 
-    private void startWorker(Socket s) {
-        Worker w = new Worker(s);
+    private void startWorker(Socket s, ServerConfig.Listener listener) {
+        Worker w = new Worker(s, listener);
         Thread t = factory.newThread(w);
         w.thread = t;
         threads.add(w);
         t.start();
     }
 
-    /** Called by a worker after its connection ended. @return the next socket, or null to exit */
-    Socket afterConnection(Worker w) {
+    /** Called by a worker after its connection ended. @return the next socket and listener, or null to exit */
+    Object[] afterConnection(Worker w) {
         synchronized (lock) {
             if (w.detached) {
                 return null;
             }
             Queued q = queue.poll();
             if (q != null) {
-                return q.socket;
+                return new Object[] {q.socket, q.listener};
             }
             active--;
             if (stopping) {
@@ -161,11 +171,10 @@ final class WorkerPool {
             }
             idle.remove(w);
             Socket s = w.next;
+            Object[] job = {s, w.nextListener};
             w.next = null;
-            if (s == null) {
-                return null;
-            }
-            return s;
+            w.nextListener = null;
+            return s == null ? null : job;
         }
     }
 
@@ -181,7 +190,7 @@ final class WorkerPool {
             w.detached = true;
             Queued q = queue.poll();
             if (q != null) {
-                startWorker(q.socket);
+                startWorker(q.socket, q.listener);
             } else {
                 active--;
             }
@@ -190,23 +199,23 @@ final class WorkerPool {
 
     /** Rejects queued sockets that waited longer than {@code queueWaitTimeout}. */
     void expireQueued(long now) {
-        List<Socket> expired = null;
+        List<Queued> expired = null;
         synchronized (lock) {
             for (Iterator<Queued> it = queue.iterator(); it.hasNext();) {
                 Queued q = it.next();
                 if (now - q.since > server.config.queueWaitTimeout) {
                     it.remove();
                     if (expired == null) {
-                        expired = new ArrayList<Socket>();
+                        expired = new ArrayList<Queued>();
                     }
-                    expired.add(q.socket);
+                    expired.add(q);
                 }
             }
         }
         if (expired != null) {
-            for (Socket s : expired) {
+            for (Queued q : expired) {
                 server.rejectedOverCapacity.incrementAndGet();
-                server.reject(s, true);
+                server.reject(q.socket, q.listener, true);
             }
         }
     }
