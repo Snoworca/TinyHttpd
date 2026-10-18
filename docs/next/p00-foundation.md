@@ -6,7 +6,7 @@
 
 ## 작업
 
-### P0-01 첫 커밋과 원격 저장소 `[ ]` (소유자 확인 필요)
+### P0-01 첫 커밋과 원격 저장소 `[x]` (2026-10-18 push)
 - 지금까지의 정리(패키지 이름 변경, Gradle 통일, 모듈 제거, 연구 문서)는 커밋되지 않았다. 리뷰하기 쉽게 세 커밋으로 나눈다.
   1. `chore: rename to TinyHttpd (com.snoworca.tinyhttpd), drop unused modules` — 패키지 이름 변경, 삭제, LICENSE/README
   2. `build: unify on Gradle 8.14.3, Java 8 release, animal-sniffer API 21` — 빌드 파일, wrapper
@@ -17,7 +17,8 @@
   2. 위 세 커밋을 만든다.
   3. `git merge origin/main --allow-unrelated-histories`로 합친다. LICENSE 충돌은 **로컬 판을 유지**하고 표기만 `Snoworca`로 맞춘다. 원격 판에는 원저작자 고지(Paul S. Hawke, Jarno Elonen, Konstantinos Togias)가 없어 BSD-3-Clause 조건을 지키지 못한다.
   4. `git push -u origin main`(force push 없음).
-- 완료 조건: `git status`가 깨끗하다. `git log --follow`로 원본 파일의 이력을 따라갈 수 있다(이름 변경이 rename으로 기록됨).
+- 진행 상황(2026-10-18): 로컬에서 1~3단계를 끝냈다(`37c1ab7`, `34ce2c1`, `0710bef`, 병합 `4352bae`). push는 소유자 확인 뒤에 한다. CLAUDE.md와 SpecKiwi 파일(`AGENTS.md`, `docs/spec/`, `docs/rule/`, `docs/.kiwi/`)은 소유자 요청으로 커밋에서 뺐다(P0-08 결정 뒤 커밋).
+- 완료 조건: `git status`가 깨끗하다. `git log --follow`로 원본 파일의 이력을 따라갈 수 있다(이름 변경이 rename으로 기록됨). `origin/main`에 push되었다.
 
 ### P0-02 CI `[ ]`
 - GitHub Actions 워크플로 `.github/workflows/build.yml`:
@@ -56,9 +57,10 @@
 - 포맷: 원본의 Eclipse formatter 설정은 삭제했다. 새로 정하지 않고, 기존 코드 스타일(4칸 들여쓰기, 120자)을 `.editorconfig`로만 고정한다.
 - 완료 조건: `./gradlew build`에서 구 코드를 뺀 경고가 0개다.
 
-### P0-06 CLAUDE.md와 계획 문서 연결 `[ ]`
+### P0-06 CLAUDE.md와 계획 문서 연결 `[x]`
 - CLAUDE.md에 D-01~D-07과 "작업 계획은 `docs/next/`" 안내를 추가한다(이 계획을 작성할 때 함께 반영했다).
-- 완료 조건: CLAUDE.md만 읽어도 이 디렉터리를 찾을 수 있다.
+- 진행 상황: CLAUDE.md에 반영했다. CLAUDE.md 커밋은 P0-08 결정 뒤로 미뤘다.
+- 완료 조건: CLAUDE.md만 읽어도 이 디렉터리를 찾을 수 있고, CLAUDE.md가 커밋되었다.
 
 ### P0-07 소켓 종류 스파이크 (JVM) `[ ]`
 - 엔진의 acceptor(P1-03)를 쓰기 전에 정해야 할 것을 JVM에서 확인한다. Android 쪽 확인은 P5-04와 P10(AND-05)에서 한다.
@@ -70,7 +72,7 @@
 - 산출물: `docs/research/socket-io.md`(JVM 절). P5-04 결정의 JVM 근거가 된다. P1-03은 이 결과와 무관하게 `ServerSocket`으로 시작한다.
 - 완료 조건: 문서에 항목별 결과와 재현 코드 위치가 있다.
 
-### P0-08 SpecKiwi 요구사항 체계와의 관계 정리 `[ ]` (소유자 결정 필요)
+### P0-08 SpecKiwi 요구사항 체계와의 관계 정리 `[x]` (2026-10-18: (b) 채택. 작업·테스트 ID가 추적을 맡고 SpecKiwi는 적용하지 않는다)
 - CLAUDE.md 뒤쪽의 SpecKiwi 블록은 요구사항의 원천을 `docs/spec/`으로 정한다. 그리고 "SRS 요구사항이 없는 동작 구현"과 "`docs/spec/` 밖의 대체 요구사항 원천"을 금지한다. 현재 `docs/spec/`은 빈 템플릿이다.
 - 이 디렉터리(`docs/next`)는 **작업 계획**이다. 요구사항 원천으로 쓰지 않는다. 착수 전에 둘 중 하나를 정한다.
   - (a) 단계마다 SRS 범위 문서(`docs/spec/NN.<scope>.srs.md`)를 만들고, 이 계획의 테스트 ID(RQ, RS, TH …)를 요구사항 ID에 연결한다. 작업 문서에는 요구사항 ID를 함께 적는다.

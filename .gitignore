@@ -19,3 +19,9 @@ target
 
 /.settings/
 /LICENSE.txt
+
+# Local agent tooling
+.agents/
+.claude/
+.codex/
+.mcp.json
