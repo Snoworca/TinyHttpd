@@ -49,7 +49,7 @@ public final class TinyHttpd {
 
     /** Stops with the configured {@code shutdownGrace}. */
     public void stop() {
-        stop(config.shutdownGrace);
+        stop(config.getShutdownGrace());
     }
 
     /**
@@ -103,6 +103,112 @@ public final class TinyHttpd {
      */
     public void setMaxRequestBodyBytes(long value) {
         config.setMaxRequestBodyBytes(value);
+    }
+
+    /**
+     * @param millis request line and headers (408); takes effect for timers started after the call
+     */
+    public void setHeaderTimeout(int millis) {
+        set("headerTimeout", millis, 1);
+    }
+
+    /**
+     * @param millis request body stall; takes effect for timers started after the call
+     */
+    public void setBodyReadTimeout(int millis) {
+        set("bodyReadTimeout", millis, 1);
+    }
+
+    /**
+     * @param millis blocked response write; takes effect for timers started after the call
+     */
+    public void setWriteTimeout(int millis) {
+        set("writeTimeout", millis, 1);
+    }
+
+    /**
+     * @param millis idle keep-alive connection; takes effect for timers started after the call
+     */
+    public void setIdleTimeout(int millis) {
+        set("idleTimeout", millis, 1);
+    }
+
+    /**
+     * @param millis idle keep-alive connection while busy; takes effect for timers started after the call
+     */
+    public void setIdleTimeoutUnderLoad(int millis) {
+        set("idleTimeoutUnderLoad", millis, 1);
+    }
+
+    /**
+     * @param millis wait for a worker (503); takes effect for timers started after the call
+     */
+    public void setQueueWaitTimeout(int millis) {
+        set("queueWaitTimeout", millis, 1);
+    }
+
+    /**
+     * @param millis lingering close; takes effect for timers started after the call
+     */
+    public void setLingerTimeout(int millis) {
+        set("lingerTimeout", millis, 0);
+    }
+
+    /**
+     * @param millis idle worker thread lifetime; takes effect for timers started after the call
+     */
+    public void setWorkerKeepAlive(int millis) {
+        set("workerKeepAlive", millis, 1);
+    }
+
+    /**
+     * @param millis default grace of {@link #stop()}; takes effect for timers started after the call
+     */
+    public void setShutdownGrace(int millis) {
+        set("shutdownGrace", millis, 0);
+    }
+
+    /**
+     * Changes the worker limits while running. Raising them starts queued connections at once; lowering them lets
+     * busy workers finish their connection and then exit.
+     *
+     * @param maxWorkers worker threads for ordinary connections
+     * @param maxConnections open plus queued ordinary connections, at least {@code maxWorkers}
+     */
+    public void setWorkerLimits(int maxWorkers, int maxConnections) {
+        if (maxWorkers <= 0 || maxConnections < maxWorkers) {
+            throw new IllegalArgumentException("need 0 < maxWorkers <= maxConnections");
+        }
+        synchronized (config) {
+            // Order keeps maxConnections >= maxWorkers visible to readers at every step.
+            if (maxWorkers > config.getMaxWorkers()) {
+                config.set("maxConnections", maxConnections);
+                config.set("maxWorkers", maxWorkers);
+            } else {
+                config.set("maxWorkers", maxWorkers);
+                config.set("maxConnections", maxConnections);
+            }
+        }
+        server.limitsChanged();
+    }
+
+    /** @param value open Server-Sent Events streams; existing streams above it are kept */
+    public void setMaxEventStreams(int value) {
+        set("maxEventStreams", value, 0);
+    }
+
+    /** @param value upgraded (WebSocket) connections; existing connections above it are kept */
+    public void setMaxUpgradedConnections(int value) {
+        set("maxUpgradedConnections", value, 0);
+    }
+
+    private void set(String name, int value, int min) {
+        if (value < min) {
+            throw new IllegalArgumentException(name + " must be >= " + min + ": " + value);
+        }
+        synchronized (config) {
+            config.set(name, value);
+        }
     }
 
     /** @return true between {@link #start()} and the end of {@link #stop()} */

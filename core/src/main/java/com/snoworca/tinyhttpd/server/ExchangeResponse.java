@@ -466,7 +466,7 @@ final class ExchangeResponse implements Response {
         if (!keepAlive) {
             sb.append("Connection: close\r\n");
         } else if (!ex.isHttp11()) {
-            sb.append("Connection: keep-alive\r\nKeep-Alive: timeout=").append(server.config.idleTimeout / 1000)
+            sb.append("Connection: keep-alive\r\nKeep-Alive: timeout=").append(server.config.getIdleTimeout() / 1000)
                     .append("\r\n");
         }
         sb.append("\r\n");

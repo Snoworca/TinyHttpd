@@ -120,7 +120,7 @@ public final class HttpServer {
         ThreadFactory tf = config.threadFactory != null ? config.threadFactory : new DefaultThreadFactory(config, log);
         this.pool = new WorkerPool(this, tf);
         this.outputBuffers = new BufferPool(config.outputBufferBytes,
-                config.maxWorkers + config.maxEventStreams + config.maxUpgradedConnections);
+                config.getMaxWorkers() + config.getMaxEventStreams() + config.getMaxUpgradedConnections());
         this.sendFileBuffers = new BufferPool(config.sendFileBufferBytes, config.sendFileBuffers);
     }
 
@@ -282,11 +282,11 @@ public final class HttpServer {
             return;
         }
         synchronized (lingering) {
-            if (lingering.size() >= config.maxConnections) {
+            if (lingering.size() >= config.getMaxConnections()) {
                 closeQuietly(s); // bounded: under a flood, lose the graceful 503 rather than memory and descriptors
                 return;
             }
-            lingering.add(new Lingering(s, System.currentTimeMillis() + config.lingerTimeout));
+            lingering.add(new Lingering(s, System.currentTimeMillis() + config.getLingerTimeout()));
         }
     }
 
@@ -363,18 +363,18 @@ public final class HttpServer {
 
     void watchdogTick(long now) {
         int busy = 0;
-        int reducedIdle = config.idleTimeoutUnderLoad;
+        int reducedIdle = config.getIdleTimeoutUnderLoad();
         for (Connection c : registry) {
             int p = c.phase.get();
             if (Connection.isBusy(p)) {
                 busy++;
             }
             long ws = c.writeSince;
-            if (ws != 0 && now - ws > config.writeTimeout) {
+            if (ws != 0 && now - ws > config.getWriteTimeout()) {
                 writeTimeouts.incrementAndGet();
                 c.writeTimedOut = true;
                 c.abortSocket();
-            } else if (p == Connection.READING_HEADERS && now - c.phaseSince > config.headerTimeout + 2000L
+            } else if (p == Connection.READING_HEADERS && now - c.phaseSince > config.getHeaderTimeout() + 2000L
                     || p == Connection.HANDSHAKING && now - c.phaseSince > c.listener.tls.getHandshakeTimeout() + 2000L) {
                 c.abortSocket();
             } else if (p == Connection.IDLE && underLoad && now - c.phaseSince > reducedIdle
@@ -384,9 +384,9 @@ public final class HttpServer {
             }
         }
         // Adaptive idle timeout with hysteresis: above 75% busy shorten, below 60% restore.
-        if (!underLoad && busy * 4 > config.maxWorkers * 3) {
+        if (!underLoad && busy * 4 > config.getMaxWorkers() * 3) {
             underLoad = true;
-        } else if (underLoad && busy * 5 < config.maxWorkers * 3) {
+        } else if (underLoad && busy * 5 < config.getMaxWorkers() * 3) {
             underLoad = false;
         }
         pool.expireQueued(now);
@@ -507,6 +507,11 @@ public final class HttpServer {
             }
             return true;
         }
+    }
+
+    /** Called after the worker limits changed at runtime. */
+    public void limitsChanged() {
+        pool.limitsChanged();
     }
 
     /** @return a snapshot of the counters */

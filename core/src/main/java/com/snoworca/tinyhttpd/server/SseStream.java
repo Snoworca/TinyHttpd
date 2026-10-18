@@ -57,7 +57,7 @@ final class SseStream implements EventStream {
             res.finish();
             return new SseStream(conn, res, false);
         }
-        if (server.eventStreams.incrementAndGet() > server.config.maxEventStreams) {
+        if (server.eventStreams.incrementAndGet() > server.config.getMaxEventStreams()) {
             server.eventStreams.decrementAndGet();
             throw new HttpException(503, "too many event streams").withHeader("Retry-After", "5");
         }

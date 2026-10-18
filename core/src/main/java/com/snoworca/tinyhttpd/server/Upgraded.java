@@ -64,7 +64,7 @@ final class Upgraded implements UpgradedConnection {
 
     private Upgraded(Connection conn) {
         this.conn = conn;
-        this.readTimeout = conn.cfg.idleTimeout;
+        this.readTimeout = conn.cfg.getIdleTimeout();
     }
 
     static UpgradedConnection start(Connection c, ExchangeResponse res, String protocol)
@@ -74,7 +74,7 @@ final class Upgraded implements UpgradedConnection {
         }
         ExchangeResponse.checkHeader("Upgrade", protocol);
         HttpServer server = c.server;
-        if (server.upgraded.incrementAndGet() > server.config.maxUpgradedConnections) {
+        if (server.upgraded.incrementAndGet() > server.config.getMaxUpgradedConnections()) {
             server.upgraded.decrementAndGet();
             throw new HttpException(503, "too many upgraded connections").withHeader("Retry-After", "5");
         }

@@ -119,7 +119,7 @@ abstract class BodyInput extends InputStream {
         }
         byte[] scratch = new byte[(int) Math.min(4096, max + 1)];
         long budget = max;
-        long deadline = System.currentTimeMillis() + conn.cfg.bodyReadTimeout;
+        long deadline = System.currentTimeMillis() + conn.cfg.getBodyReadTimeout();
         try {
             while (true) {
                 if (System.currentTimeMillis() > deadline) {

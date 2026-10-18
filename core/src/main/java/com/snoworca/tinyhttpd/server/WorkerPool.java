@@ -104,10 +104,10 @@ final class WorkerPool {
         synchronized (lock) {
             if (stopping) {
                 reject = true;
-            } else if (active < server.config.maxWorkers) {
+            } else if (active < server.config.getMaxWorkers()) {
                 active++;
                 dispatch(s, listener);
-            } else if (active + queue.size() < server.config.maxConnections) {
+            } else if (active + queue.size() < server.config.getMaxConnections()) {
                 queue.add(new Queued(s, listener, System.currentTimeMillis()));
                 evict = true;
             } else {
@@ -119,6 +119,17 @@ final class WorkerPool {
             server.reject(s, listener, true);
         } else if (evict) {
             server.evictOneIdle();
+        }
+    }
+
+    /** Starts queued connections the raised limit now allows. */
+    void limitsChanged() {
+        synchronized (lock) {
+            Queued q;
+            while (!stopping && active < server.config.getMaxWorkers() && (q = queue.poll()) != null) {
+                active++;
+                dispatch(q.socket, q.listener);
+            }
         }
     }
 
@@ -148,6 +159,10 @@ final class WorkerPool {
             if (w.detached) {
                 return null;
             }
+            if (active > server.config.getMaxWorkers()) { // the limit was lowered: retire this worker
+                active--;
+                return null;
+            }
             Queued q = queue.poll();
             if (q != null) {
                 return new Object[] {q.socket, q.listener};
@@ -157,7 +172,7 @@ final class WorkerPool {
                 return null;
             }
             idle.addLast(w);
-            long deadline = System.currentTimeMillis() + server.config.workerKeepAlive;
+            long deadline = System.currentTimeMillis() + server.config.getWorkerKeepAlive();
             while (w.next == null && !stopping) {
                 long left = deadline - System.currentTimeMillis();
                 if (left <= 0) {
@@ -203,7 +218,7 @@ final class WorkerPool {
         synchronized (lock) {
             for (Iterator<Queued> it = queue.iterator(); it.hasNext();) {
                 Queued q = it.next();
-                if (now - q.since > server.config.queueWaitTimeout) {
+                if (now - q.since > server.config.getQueueWaitTimeout()) {
                     it.remove();
                     if (expired == null) {
                         expired = new ArrayList<Queued>();

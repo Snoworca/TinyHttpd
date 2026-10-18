@@ -180,6 +180,93 @@ public class ThreadingTest extends EngineTestBase {
     }
 
     @Test
+    public void th04_headerTimeoutChangedWhileRunning() throws Exception {
+        start();
+        server.setHeaderTimeout(500);
+        RawConnection c = connect();
+        try {
+            long start = System.currentTimeMillis();
+            c.send("GET /hello HTTP/1.1\r\n");
+            assertEquals(408, c.read().status());
+            assertTrue(System.currentTimeMillis() - start < 2000);
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
+    public void th01_workerLimitsChangedWhileRunning() throws Exception {
+        // A queued TLS client blocks in its handshake constructor; the limit logic does not depend on the transport.
+        org.junit.Assume.assumeFalse(tls);
+        final CountDownLatch gate = new CountDownLatch(1);
+        final CountDownLatch in = new CountDownLatch(2);
+        routes.put("/block", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) throws IOException {
+                in.countDown();
+                try {
+                    gate.await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                text(res, "done");
+            }
+        });
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(4)
+                .queueWaitTimeout(10000));
+        String block = "GET /block HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n";
+        RawConnection a = connect();
+        RawConnection b = null;
+        RawConnection c = null;
+        try {
+            a.send(block);
+            long deadline = System.currentTimeMillis() + 2000;
+            // b must arrive while a is busy, or queueing b evicts a as idle.
+            while (in.getCount() > 1 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            b = connect();
+            b.send(block);
+            while (server.getStats().queuedConnections < 1 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(1, server.getStats().queuedConnections);
+            server.setWorkerLimits(2, 4);
+            assertTrue("queued request did not start", in.await(2, TimeUnit.SECONDS));
+            assertEquals(0, server.getStats().queuedConnections);
+            // Lower the limit while both workers are busy: one of them retires when its connection ends.
+            server.setWorkerLimits(1, 4);
+            c = connect();
+            c.send(block);
+            gate.countDown();
+            assertEquals(200, a.read().status());
+            assertEquals(200, b.read().status());
+            assertEquals(200, c.read().status());
+            deadline = System.currentTimeMillis() + 2000;
+            while (server.getStats().workerThreads > 1 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(1, server.getStats().workerThreads);
+        } finally {
+            a.close();
+            if (b != null) {
+                b.close();
+            }
+            if (c != null) {
+                c.close();
+            }
+        }
+        try {
+            server.setWorkerLimits(2, 1);
+            fail("maxConnections below maxWorkers accepted");
+        } catch (IllegalArgumentException expected) {
+            // keeps the invariant
+        }
+        assertEquals(1, server.getConfig().getMaxWorkers());
+    }
+
+    @Test
     public void th04_slowHeaderGets408() throws Exception {
         start(com.snoworca.tinyhttpd.testing.TestServers.builder().headerTimeout(500));
         final RawConnection c = connect();

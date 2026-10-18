@@ -143,7 +143,7 @@ final class Connection {
             }
             long now = System.currentTimeMillis();
             phaseSince = now;
-            deadline = now + cfg.headerTimeout;
+            deadline = now + cfg.getHeaderTimeout();
             Exchange ex = new Exchange(this);
             if (socket != raw) {
                 Tls.setAttributes(this, ex);
@@ -206,7 +206,7 @@ final class Connection {
         int t;
         switch (phase.get()) {
             case IDLE:
-                t = server.isUnderLoad() ? cfg.idleTimeoutUnderLoad : cfg.idleTimeout;
+                t = server.isUnderLoad() ? cfg.getIdleTimeoutUnderLoad() : cfg.getIdleTimeout();
                 break;
             case READING_HEADERS:
             case LINGERING:
@@ -222,7 +222,7 @@ final class Connection {
                 t = u != null ? u.readTimeout : 0;
                 break;
             default:
-                t = cfg.bodyReadTimeout;
+                t = cfg.getBodyReadTimeout();
         }
         if (t != soTimeout) {
             socket.setSoTimeout(t);
@@ -367,7 +367,7 @@ final class Connection {
      */
     void lingerClose() {
         setPhase(LINGERING);
-        deadline = System.currentTimeMillis() + cfg.lingerTimeout;
+        deadline = System.currentTimeMillis() + cfg.getLingerTimeout();
         try {
             if (isSecure()) {
                 Tls.closeOutbound(this);

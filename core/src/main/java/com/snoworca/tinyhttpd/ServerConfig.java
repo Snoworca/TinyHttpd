@@ -59,26 +59,26 @@ public final class ServerConfig {
     public final int maxRequestsPerConnection;
     public final String serverHeader;
 
-    public final int lingerTimeout;
-    public final int idleTimeout;
-    public final int idleTimeoutUnderLoad;
-    public final int headerTimeout;
-    public final int bodyReadTimeout;
-    public final int writeTimeout;
-    public final int queueWaitTimeout;
-    public final int workerKeepAlive;
-    public final int shutdownGrace;
+    private volatile int lingerTimeout;
+    private volatile int idleTimeout;
+    private volatile int idleTimeoutUnderLoad;
+    private volatile int headerTimeout;
+    private volatile int bodyReadTimeout;
+    private volatile int writeTimeout;
+    private volatile int queueWaitTimeout;
+    private volatile int workerKeepAlive;
+    private volatile int shutdownGrace;
 
-    public final int maxWorkers;
-    public final int maxConnections;
+    private volatile int maxWorkers;
+    private volatile int maxConnections;
     public final int maxConnectionsPerAddress;
 
     public final int sendFileBufferBytes;
     public final int sendFileBuffers;
-    public final int maxEventStreams;
+    private volatile int maxEventStreams;
     public final int eventQueueEvents;
     public final int eventQueueBytes;
-    public final int maxUpgradedConnections;
+    private volatile int maxUpgradedConnections;
 
     ServerConfig(TinyHttpd.Builder b) {
         List<Listener> ls = new ArrayList<Listener>();
@@ -142,5 +142,103 @@ public final class ServerConfig {
 
     void setMaxRequestBodyBytes(long value) {
         maxRequestBodyBytes = value;
+    }
+
+    /** @return the current {@code headerTimeout}; see {@link TinyHttpd.Builder#headerTimeout(int)} */
+    public int getHeaderTimeout() {
+        return headerTimeout;
+    }
+
+    /** @return the current {@code bodyReadTimeout}; see {@link TinyHttpd.Builder#bodyReadTimeout(int)} */
+    public int getBodyReadTimeout() {
+        return bodyReadTimeout;
+    }
+
+    /** @return the current {@code writeTimeout}; see {@link TinyHttpd.Builder#writeTimeout(int)} */
+    public int getWriteTimeout() {
+        return writeTimeout;
+    }
+
+    /** @return the current {@code idleTimeout}; see {@link TinyHttpd.Builder#idleTimeout(int)} */
+    public int getIdleTimeout() {
+        return idleTimeout;
+    }
+
+    /** @return the current {@code idleTimeoutUnderLoad}; see {@link TinyHttpd.Builder#idleTimeoutUnderLoad(int)} */
+    public int getIdleTimeoutUnderLoad() {
+        return idleTimeoutUnderLoad;
+    }
+
+    /** @return the current {@code queueWaitTimeout}; see {@link TinyHttpd.Builder#queueWaitTimeout(int)} */
+    public int getQueueWaitTimeout() {
+        return queueWaitTimeout;
+    }
+
+    /** @return the current {@code lingerTimeout}; see {@link TinyHttpd.Builder#lingerTimeout(int)} */
+    public int getLingerTimeout() {
+        return lingerTimeout;
+    }
+
+    /** @return the current {@code workerKeepAlive}; see {@link TinyHttpd.Builder#workerKeepAlive(int)} */
+    public int getWorkerKeepAlive() {
+        return workerKeepAlive;
+    }
+
+    /** @return the current {@code shutdownGrace}; see {@link TinyHttpd.Builder#shutdownGrace(int)} */
+    public int getShutdownGrace() {
+        return shutdownGrace;
+    }
+
+    /** @return the current {@code maxWorkers}; see {@link TinyHttpd.Builder#maxWorkers(int)} */
+    public int getMaxWorkers() {
+        return maxWorkers;
+    }
+
+    /** @return the current {@code maxConnections}; see {@link TinyHttpd.Builder#maxConnections(int)} */
+    public int getMaxConnections() {
+        return maxConnections;
+    }
+
+    /** @return the current {@code maxEventStreams}; see {@link TinyHttpd.Builder#maxEventStreams(int)} */
+    public int getMaxEventStreams() {
+        return maxEventStreams;
+    }
+
+    /** @return the current {@code maxUpgradedConnections}; see {@link TinyHttpd.Builder#maxUpgradedConnections(int)} */
+    public int getMaxUpgradedConnections() {
+        return maxUpgradedConnections;
+    }
+
+    /** Applies a runtime change made through {@link TinyHttpd}; values are validated there. */
+    void set(String name, int value) {
+        if ("headerTimeout".equals(name)) {
+            headerTimeout = value;
+        } else if ("bodyReadTimeout".equals(name)) {
+            bodyReadTimeout = value;
+        } else if ("writeTimeout".equals(name)) {
+            writeTimeout = value;
+        } else if ("idleTimeout".equals(name)) {
+            idleTimeout = value;
+        } else if ("idleTimeoutUnderLoad".equals(name)) {
+            idleTimeoutUnderLoad = value;
+        } else if ("queueWaitTimeout".equals(name)) {
+            queueWaitTimeout = value;
+        } else if ("lingerTimeout".equals(name)) {
+            lingerTimeout = value;
+        } else if ("workerKeepAlive".equals(name)) {
+            workerKeepAlive = value;
+        } else if ("shutdownGrace".equals(name)) {
+            shutdownGrace = value;
+        } else if ("maxWorkers".equals(name)) {
+            maxWorkers = value;
+        } else if ("maxConnections".equals(name)) {
+            maxConnections = value;
+        } else if ("maxEventStreams".equals(name)) {
+            maxEventStreams = value;
+        } else if ("maxUpgradedConnections".equals(name)) {
+            maxUpgradedConnections = value;
+        } else {
+            throw new IllegalArgumentException(name);
+        }
     }
 }
