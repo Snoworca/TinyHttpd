@@ -108,7 +108,6 @@ project(':tinyhttpd-router') {
     dependencies {
         api project(':tinyhttpd-core')
         testImplementation testFixtures(project(':tinyhttpd-core'))
-        testImplementation 'org.apache.httpcomponents:httpclient:4.4.1'
     }
 }
 
