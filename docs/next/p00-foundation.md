@@ -62,7 +62,7 @@
 - 진행 상황: CLAUDE.md에 반영했다. CLAUDE.md 커밋은 P0-08 결정 뒤로 미뤘다.
 - 완료 조건: CLAUDE.md만 읽어도 이 디렉터리를 찾을 수 있고, CLAUDE.md가 커밋되었다.
 
-### P0-07 소켓 종류 스파이크 (JVM) `[ ]`
+### P0-07 소켓 종류 스파이크 (JVM) `[x]` (2026-10-18, JDK 17만 확인. JDK 8 미설치로 미확인)
 - 엔진의 acceptor(P1-03)를 쓰기 전에 정해야 할 것을 JVM에서 확인한다. Android 쪽 확인은 P5-04와 P10(AND-05)에서 한다.
   - 채널 기반 소켓(`ServerSocketChannel`)의 `socket().getInputStream()` 읽기가 `setSoTimeout`을 따르는가
   - 평문 `ServerSocket`으로 받은 소켓을 `SSLSocketFactory.createSocket(socket, host, port, autoClose)`로 감쌀 때, 다른 스레드에서 **원본 평문 소켓**을 닫으면 TLS 쓰기·읽기가 막힘 없이 풀리는가(P3-04, P7-02)
