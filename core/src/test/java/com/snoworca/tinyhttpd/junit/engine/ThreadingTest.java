@@ -163,6 +163,81 @@ public class ThreadingTest extends EngineTestBase {
     }
 
     @Test
+    public void th03_freshConnectionIsNotEvicted() throws Exception {
+        org.junit.Assume.assumeFalse(tls); // a queued TLS client blocks in its handshake constructor
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(2));
+        RawConnection fresh = connect(); // holds the only worker, no request yet
+        RawConnection queued = null;
+        try {
+            long deadline = System.currentTimeMillis() + 2000;
+            while (server.getStats().busyWorkers + server.getStats().workerThreads < 1
+                    && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            queued = connect();
+            queued.send("GET /hello HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+            Thread.sleep(700); // past a watchdog tick
+            fresh.send("GET /hello HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+            assertEquals(200, fresh.read().status());
+            assertEquals(200, queued.read().status());
+            assertEquals(0, server.getStats().evictions);
+        } finally {
+            fresh.close();
+            if (queued != null) {
+                queued.close();
+            }
+        }
+    }
+
+    @Test
+    public void th03_overloadAnswersEveryRequest() throws Exception {
+        org.junit.Assume.assumeFalse(tls); // a queued TLS client blocks in its handshake constructor
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(2).maxConnections(4)
+                .queueWaitTimeout(2000));
+        final List<String> bad = new CopyOnWriteArrayList<String>();
+        final java.util.concurrent.atomic.AtomicInteger ok = new java.util.concurrent.atomic.AtomicInteger();
+        List<Thread> clients = new ArrayList<Thread>();
+        for (int t = 0; t < 6; t++) {
+            Thread client = new Thread(() -> {
+                for (int i = 0; i < 10; i++) {
+                    try {
+                        RawConnection c = connect();
+                        try {
+                            c.setReadTimeout(5000);
+                            // A short burst with a pause, as a browser does on one keep-alive connection.
+                            for (int j = 0; j < 4; j++) {
+                                c.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+                                int st = c.read().status();
+                                if (st == 503) {
+                                    break;
+                                }
+                                if (st != 200) {
+                                    bad.add("status " + st);
+                                    break;
+                                }
+                                ok.incrementAndGet();
+                                Thread.sleep(j == 1 ? 50 : 0);
+                            }
+                        } finally {
+                            c.close();
+                        }
+                    } catch (IOException | InterruptedException e) {
+                        bad.add(e.toString());
+                    }
+                }
+            });
+            client.start();
+            clients.add(client);
+        }
+        for (Thread client : clients) {
+            client.join(30000);
+            assertFalse("client hung", client.isAlive());
+        }
+        assertTrue(bad.toString(), bad.isEmpty());
+        assertTrue("served " + ok.get(), ok.get() > 0);
+    }
+
+    @Test
     public void th03_idleConnectionIsEvictedForANewOne() throws IOException {
         start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(2).maxConnections(4));
         List<RawConnection> idle = new ArrayList<RawConnection>();
@@ -382,10 +457,8 @@ public class ThreadingTest extends EngineTestBase {
                         } finally {
                             c.close();
                         }
-                    } catch (java.net.SocketTimeoutException e) {
-                        bad.add(e.toString()); // a hang, unlike the closes below
-                    } catch (IOException overload) {
-                        // Over capacity a just-accepted connection may be evicted as idle or reset after its 503.
+                    } catch (IOException e) {
+                        bad.add(e.toString()); // every request gets 200 or 503, never a dropped connection
                     }
                 }
             });

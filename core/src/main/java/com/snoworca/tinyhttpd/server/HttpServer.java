@@ -306,10 +306,18 @@ public final class HttpServer {
     }
 
     /** Closes the idle connection that has waited longest, to free its worker for a queued socket. */
+    /** Idle time before a keep-alive connection may be closed to make room for a queued one. */
+    static final long MIN_EVICTABLE_IDLE_MS = 250;
+
     boolean evictOneIdle() {
+        long now = System.currentTimeMillis();
         Connection oldest = null;
         for (Connection c : registry) {
-            if (c.phase.get() == Connection.IDLE && (oldest == null || c.phaseSince < oldest.phaseSince)) {
+            // Only keep-alive connections: a fresh one may already hold its first request, and dropping it loses
+            // that request without an answer. A connection idle only briefly is likely between requests of a burst,
+            // so closing it would race the next request; the watchdog retries once it has idled long enough.
+            if (c.phase.get() == Connection.IDLE && c.requestCount > 0 && now - c.phaseSince >= MIN_EVICTABLE_IDLE_MS
+                    && (oldest == null || c.phaseSince < oldest.phaseSince)) {
                 oldest = c;
             }
         }
@@ -390,8 +398,8 @@ public final class HttpServer {
             underLoad = false;
         }
         pool.expireQueued(now);
-        if (pool.queued() > 0) {
-            evictOneIdle();
+        for (int n = pool.queued(); n > 0 && evictOneIdle(); n--) {
+            // one idle connection per queued one
         }
         synchronized (lingering) {
             for (Iterator<Lingering> it = lingering.iterator(); it.hasNext();) {

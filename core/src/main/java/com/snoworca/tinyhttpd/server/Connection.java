@@ -74,7 +74,7 @@ final class Connection {
 
     private int soTimeout = -1;
 
-    int requestCount;
+    volatile int requestCount;
 
     /** The connection must close after the current response. */
     boolean mustClose;
