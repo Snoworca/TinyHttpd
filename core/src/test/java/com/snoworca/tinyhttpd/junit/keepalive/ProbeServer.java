@@ -1,105 +1,115 @@
 package com.snoworca.tinyhttpd.junit.keepalive;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.Socket;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ThreadFactory;
 
-import com.snoworca.tinyhttpd.protocols.http.ClientHandler;
-import com.snoworca.tinyhttpd.protocols.http.IHTTPSession;
-import com.snoworca.tinyhttpd.protocols.http.NanoHTTPD;
-import com.snoworca.tinyhttpd.protocols.http.response.Response;
-import com.snoworca.tinyhttpd.protocols.http.response.Status;
-import com.snoworca.tinyhttpd.protocols.http.threading.DefaultAsyncRunner;
+import com.snoworca.tinyhttpd.ServerStats;
+import com.snoworca.tinyhttpd.TinyHttpd;
+import com.snoworca.tinyhttpd.http.Handler;
+import com.snoworca.tinyhttpd.http.Request;
+import com.snoworca.tinyhttpd.http.Response;
 
-/**
- * Test server for the keep-alive probes. Each URI exercises one connection-handling path.
- */
-class ProbeServer extends NanoHTTPD {
+/** Test server for the keep-alive probes on the new engine. Each path exercises one connection-handling path. */
+public class ProbeServer {
 
-    final AtomicInteger acceptedConnections = new AtomicInteger();
-
-    /** Every connection worker thread this server created. */
+    /** Every worker thread the server created. */
     final List<Thread> workerThreads = Collections.synchronizedList(new ArrayList<Thread>());
 
+    final TinyHttpd server;
+
     ProbeServer() {
-        super("127.0.0.1", 0);
-        setAsyncRunner(new DefaultAsyncRunner() {
+        this(TinyHttpd.builder());
+    }
+
+    ProbeServer(TinyHttpd.Builder builder) {
+        server = builder.port(0).handler(HANDLER).threadFactory(new ThreadFactory() {
 
             @Override
-            protected Thread createThread(ClientHandler clientHandler) {
-                Thread t = super.createThread(clientHandler);
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "probe-worker-" + workerThreads.size());
+                t.setDaemon(true);
                 workerThreads.add(t);
                 return t;
             }
-        });
+        }).build();
     }
 
-    @Override
-    protected ClientHandler createClientHandler(Socket finalAccept, InputStream inputStream) {
-        acceptedConnections.incrementAndGet();
-        return super.createClientHandler(finalAccept, inputStream);
-    }
+    static final Handler HANDLER = new Handler() {
 
-    @Override
-    public Response serve(IHTTPSession session) {
-        String uri = session.getUri();
-        if ("/hello".equals(uri)) {
-            return text("hello");
-        }
-        if ("/second".equals(uri)) {
-            return text("second");
-        }
-        if ("/query".equals(uri)) {
-            return text("query=" + session.getQueryParameterString());
-        }
-        if ("/ignore-body".equals(uri)) {
-            // Handler that never touches the request body.
-            return text("ignored");
-        }
-        if ("/chunked".equals(uri)) {
-            return Response.newChunkedResponse(Status.OK, MIME_PLAINTEXT, new ByteArrayInputStream("hello".getBytes()));
-        }
-        if ("/short".equals(uri)) {
-            // Declares 10 bytes but the stream only has 5.
-            return Response.newFixedLengthResponse(Status.OK, MIME_PLAINTEXT, new ByteArrayInputStream("12345".getBytes()), 10);
-        }
-        if ("/read-all".equals(uri)) {
-            // Handler that reads the request body until EOF, as one would with a servlet.
-            long count = 0;
-            try {
-                InputStream in = session.getInputStream();
-                byte[] buf = new byte[1024];
-                int n;
-                while ((n = in.read(buf)) != -1) {
-                    count += n;
+        @Override
+        public void handle(Request req, Response res) throws IOException {
+            String uri = req.getPath();
+            if ("/hello".equals(uri)) {
+                text(res, "hello");
+            } else if ("/second".equals(uri)) {
+                text(res, "second");
+            } else if ("/query".equals(uri)) {
+                text(res, "query=" + req.getQueryString());
+            } else if ("/ignore-body".equals(uri)) {
+                text(res, "ignored");
+            } else if ("/chunked".equals(uri)) {
+                // No declared length and more than the 8 KB output buffer: chunked framing.
+                byte[] block = new byte[1024];
+                Arrays.fill(block, (byte) 'c');
+                OutputStream out = res.getOutputStream();
+                for (int i = 0; i < 16; i++) {
+                    out.write(block);
                 }
-                return text("read " + count);
-            } catch (IOException e) {
-                return text("read failed after " + count + " bytes: " + e);
+            } else if ("/short".equals(uri)) {
+                res.setContentLengthLong(10);
+                res.getOutputStream().write("12345".getBytes("US-ASCII"));
+            } else if ("/read-all".equals(uri)) {
+                long count = 0;
+                try {
+                    count = drain(req.getInputStream());
+                    text(res, "read " + count);
+                } catch (IOException e) {
+                    text(res, "read failed: " + e);
+                }
+            } else if ("/parse".equals(uri)) {
+                text(res, "parsed " + drain(req.getInputStream()));
+            } else {
+                res.setStatus(404);
+                text(res, "not found");
             }
         }
-        if ("/parse".equals(uri)) {
-            Map<String, String> files = new HashMap<String, String>();
-            try {
-                session.parseBody(files);
-            } catch (Exception e) {
-                return text("parse failed: " + e);
-            }
-            String body = files.get("postData");
-            return text("parsed " + (body == null ? 0 : body.length()));
+    };
+
+    static long drain(InputStream in) throws IOException {
+        long count = 0;
+        byte[] buf = new byte[1024];
+        int n;
+        while ((n = in.read(buf)) != -1) {
+            count += n;
         }
-        return Response.newFixedLengthResponse(Status.NOT_FOUND, MIME_PLAINTEXT, "not found");
+        return count;
     }
 
-    private static Response text(String s) {
-        return Response.newFixedLengthResponse(Status.OK, MIME_PLAINTEXT, s);
+    static void text(Response res, String s) throws IOException {
+        res.setContentType("text/plain");
+        res.getOutputStream().write(s.getBytes("UTF-8"));
+    }
+
+    void start() throws IOException {
+        server.start();
+    }
+
+    void stop() {
+        server.stop(500);
+    }
+
+    int port() {
+        return server.getPort();
+    }
+
+    ServerStats stats() {
+        return server.getStats();
     }
 
     int liveWorkerThreads() {
@@ -114,12 +124,21 @@ class ProbeServer extends NanoHTTPD {
         return n;
     }
 
-    /** Waits up to {@code millis} for all worker threads to finish and returns how many are still alive. */
+    /**
+     * Waits until no worker is busy and no connection is open. Pooled workers stay alive between connections, so
+     * "idle" means the connections were cleaned up, not that the threads ended.
+     *
+     * @return busy workers plus open connections still left after the wait
+     */
     int awaitWorkersIdle(long millis) throws InterruptedException {
         long deadline = System.currentTimeMillis() + millis;
-        while (liveWorkerThreads() > 0 && System.currentTimeMillis() < deadline) {
+        while (true) {
+            ServerStats s = stats();
+            int left = s.busyWorkers + s.openConnections;
+            if (left == 0 || System.currentTimeMillis() >= deadline) {
+                return left;
+            }
             Thread.sleep(20);
         }
-        return liveWorkerThreads();
     }
 }

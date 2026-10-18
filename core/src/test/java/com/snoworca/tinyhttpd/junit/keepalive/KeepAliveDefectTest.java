@@ -4,8 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -14,18 +12,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
 import org.junit.rules.Timeout;
 
-import com.snoworca.tinyhttpd.junit.KnownDefect;
-import com.snoworca.tinyhttpd.junit.keepalive.RawConnection.RawResponse;
-import com.snoworca.tinyhttpd.protocols.http.NanoHTTPD;
+import com.snoworca.tinyhttpd.testing.RawConnection;
+import com.snoworca.tinyhttpd.testing.RawConnection.RawResponse;
+import com.snoworca.tinyhttpd.testing.ThreadCpu;
 
 /**
- * Keep-alive behavior the server must have. Each test fails on the inherited NanoHttpd code; the IDs (KA-nn) are
- * referenced from docs/research/keep-alive.md.
+ * Keep-alive behavior the server must have. Each test failed on the inherited NanoHttpd code; the IDs (KA-nn) are
+ * referenced from docs/research/keep-alive.md. They now run against the new engine.
  */
-@Category(KnownDefect.class)
 public class KeepAliveDefectTest {
 
     @Rule
@@ -38,8 +34,8 @@ public class KeepAliveDefectTest {
     @Before
     public void startServer() throws IOException {
         server = new ProbeServer();
-        server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, true);
-        port = server.getListeningPort();
+        server.start();
+        port = server.port();
     }
 
     @After
@@ -319,26 +315,12 @@ public class KeepAliveDefectTest {
     }
 
     private static RawResponse readWithLongTimeout(RawConnection c) throws IOException {
-        // RawConnection reads with a 3 s timeout; the server's own read timeout is 5 s, so retry once.
-        try {
-            return c.read();
-        } catch (java.net.SocketTimeoutException first) {
-            return c.read();
-        }
+        c.setReadTimeout(10000);
+        return c.read();
     }
 
     private String workerCpuMillis() {
-        ThreadMXBean mx = ManagementFactory.getThreadMXBean();
-        StringBuilder sb = new StringBuilder();
-        synchronized (server.workerThreads) {
-            for (Thread t : server.workerThreads) {
-                if (t.isAlive()) {
-                    long nanos = mx.getThreadCpuTime(t.getId());
-                    sb.append(sb.length() == 0 ? "" : ", ").append(nanos / 1000000);
-                }
-            }
-        }
-        return sb.toString();
+        return ThreadCpu.millis(server.workerThreads);
     }
 
     private static void sleepQuietly(long millis) {

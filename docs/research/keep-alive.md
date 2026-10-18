@@ -206,3 +206,10 @@ persistent = 요청이 유지를 원함             // 1.1: close 토큰 없음,
 1. 1단계 스레드 모델로 충분한가? 구형 기기에서 연결 128개 기준 메모리를 측정해야 한다.
 2. 기본 유휴 타임아웃: 15초면 브라우저와 OkHttp(풀 유지 5분) 모두에서 재연결 비용과 스레드 점유 사이의 균형이 맞는가?
 3. HTTP 파이프라이닝은 지금처럼 순차 처리만 지원하면 되는가? (브라우저는 사용하지 않는다.)
+
+## 6. 새 엔진 결과 (2026-10-18)
+
+- KA-01~16, KB-01~06이 새 엔진(`com.snoworca.tinyhttpd.server`)에서 기본 `test`로 통과한다. `KnownDefect`가 붙은 KA 테스트는 없다.
+- `awaitWorkersIdle`은 "`busyWorkers == 0` 그리고 `openConnections == 0`"으로 바꿨다. 풀 워커는 `workerKeepAlive` 동안 살아 있으므로 스레드 종료로는 셀 수 없다. 단언의 의도(연결이 정리되고 워커가 돌지 않음)는 같다.
+- lingering close(§4.9)는 64 KB 상한 대신 "EOF 또는 `lingerTimeout`(2 s)까지 읽어 버림"으로 구현했다(KA-14 256 KB 잔여).
+- header 타임아웃은 워커가 `read`마다 남은 시간으로 `soTimeout`을 다시 걸어 지킨다. watchdog 주기는 500 ms이고 쓰기 타임아웃만 맡는다(§4.7).

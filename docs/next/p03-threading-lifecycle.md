@@ -29,7 +29,7 @@ accept
 
 ## 작업
 
-### P3-01 워커 풀과 연결 접수 `[ ]`
+### P3-01 워커 풀과 연결 접수 `[x]` (2026-10-18)
 - `server.WorkerPool`: `ThreadPoolExecutor`를 쓰지 않는다. 직접 구현한다. 위의 "대기열에 넣고 유휴 연결을 닫는다" 정책을 넣기 어렵기 때문이다.
   - 워커는 필요할 때 만들고, `workerKeepAlive`(60 s) 동안 일이 없으면 끝낸다. 시작 직후 스레드 수는 acceptor + watchdog 두 개뿐이다(메모리 최소화).
   - 대기열은 `ArrayDeque<Socket>` + 락 하나. 크기는 `maxConnections - maxWorkers`.
@@ -39,7 +39,7 @@ accept
 - 빌더 옵션: `maxWorkers`, `maxConnections`, `maxConnectionsPerAddress`, `queueWaitTimeout`, `workerKeepAlive`.
 - 완료 조건: KA-12, TH-01~03, TH-09, TH-16, TH-17 통과.
 
-### P3-02 연결 레지스트리와 단계 전이 `[ ]`
+### P3-02 연결 레지스트리와 단계 전이 `[x]` (2026-10-18)
 - 살아 있는 모든 `Connection`을 담는 집합. `ConcurrentHashMap.newKeySet()`은 Java 8 API라 쓰지 않는다. `Collections.newSetFromMap(new ConcurrentHashMap<…>())`을 쓴다.
 - 연결 단계: `IDLE`, `READING_HEADERS`, `HANDLING`, `WRITING`, `DRAINING`, `LINGERING`, `STREAMING`(SSE), `UPGRADED`(WebSocket), `CLOSING`(TLS는 P7에서 `HANDSHAKING` 추가). 단계별 규칙:
 
@@ -57,7 +57,7 @@ accept
 - watchdog, 유휴 연결 축출, 종료가 이 레지스트리를 쓴다.
 - 완료 조건: 연결이 끝나면 레지스트리에서 빠진다(TH-14에서 누수 검사). 축출 경합 단위 테스트(두 스레드가 동시에 CAS)가 통과한다.
 
-### P3-03 타임아웃 분리 `[ ]`
+### P3-03 타임아웃 분리 `[x]` (2026-10-18)
 
 | 타임아웃 | 시작 | 구현 | 만료 시 | 기본값 |
 |---|---|---|---|---|
@@ -72,7 +72,7 @@ accept
 - 쓰기 타임아웃만 watchdog이 필요하다. 블로킹 쓰기를 깨울 API가 없기 때문이다(keep-alive.md §4.7). 다른 스레드에서 소켓을 닫으면 막힌 쓰기가 예외로 풀린다. **Android에서도 그런지 P10에서 확인한다**(AND-03).
 - 완료 조건: TH-04~07, TH-15 통과. KB-04와 KB-05는 설정한 idle 값으로 다시 맞춘다(테스트는 500 ms를 설정해 빨리 끝낸다). KB-05는 idle보다 오래 기다려야 "서버 유휴 종료 뒤 복구"라는 의도가 유지된다.
 
-### P3-04 watchdog `[ ]`
+### P3-04 watchdog `[x]` (2026-10-18)
 - 데몬 스레드 하나(`tinyhttpd-watchdog`). 500 ms마다(옵션 아님) 레지스트리를 훑는다.
 - 하는 일:
   1. 쓰기 마감을 넘긴 연결을 닫는다.
@@ -88,25 +88,25 @@ accept
 - 연결 수가 128개 이하이므로 매번 전부 훑어도 비용이 작다. 우선순위 큐를 쓰지 않는다.
 - 완료 조건: TH-06 통과. 연결이 없을 때 watchdog의 CPU 사용량이 무시할 만하다(10초 동안 10 ms 미만).
 
-### P3-05 적응형 유휴 타임아웃 `[ ]`
+### P3-05 적응형 유휴 타임아웃 `[x]` (2026-10-18)
 - 바쁜 워커(위 용어 정의) 수가 `maxWorkers`의 75%를 넘으면, 그때부터 유휴 상태로 들어가는 연결의 idle 타임아웃을 `idleTimeoutUnderLoad`(2 s)로 줄인다. 60% 아래로 내려가면 원래 값으로 돌린다(진동 방지를 위한 이력 구간).
 - 이미 유휴 중인 연결은 다음 watchdog 주기에 새 마감 시각을 적용한다(watchdog이 CAS 후 닫는다).
 - 완료 조건: TH-08 통과.
 
-### P3-06 스레드 생성 `[ ]`
+### P3-06 스레드 생성 `[x]` (2026-10-18)
 - 기본 스레드 팩토리: 이름 `tinyhttpd-worker-<n>`, `new Thread(group, r, name, workerStackBytes)`(기본 256 KB), 데몬 여부는 빌더 옵션 `daemon`(기본 `true`).
 - `UncaughtExceptionHandler`: SEVERE 로그. 워커가 죽어도 풀은 계속 동작한다(다음 접수 때 새 워커를 만든다).
 - 빌더 옵션 `threadFactory(ThreadFactory)`(P1-01에서 이미 만듦)로 교체할 수 있다.
 - Android가 스택 크기를 실제로 반영하는지는 P10에서 측정한다(AND-04).
 - 완료 조건: TH-13 통과.
 
-### P3-07 워커 밖의 닫기 경로 `[ ]`
+### P3-07 워커 밖의 닫기 경로 `[x]` (2026-10-18)
 - 평문 lingering close는 P1-15에서 구현했다. 이 작업은 워커가 없는 경로를 다룬다.
 - acceptor의 503 거절(P3-01): acceptor가 503을 쓰고 `shutdownOutput()`한 뒤 소켓을 watchdog의 "linger 목록"에 넘긴다. watchdog은 주기마다 `available()`만큼만 읽어 버리고(막히지 않음), `lingerTimeout`이 지나면 닫는다. acceptor와 watchdog 모두 막히지 않는다.
 - linger 중인 워커 연결(`LINGERING`)은 바쁜 워커로 센다(최대 2 s). 측정에서 문제가 되면 이 연결도 watchdog의 linger 목록으로 넘긴다.
 - 완료 조건: TH-02에서 클라이언트가 요청을 보낸 뒤 503을 읽을 수 있다(Linux CI).
 
-### P3-08 시작과 정지 `[ ]`
+### P3-08 시작과 정지 `[x]` (2026-10-18)
 - `start()`: 호출한 스레드에서 `bind`까지 끝낸 뒤 acceptor를 시작한다. bind 실패(포트 사용 중 등)는 `start()`가 `IOException`으로 던진다. 구 코드의 `Thread.sleep(10)` 폴링을 없앤다(PR #658).
 - 상태: `NEW → STARTED → STOPPING → STOPPED`. `volatile` 필드 하나로 관리한다. 다시 시작할 수 없다(새 인스턴스를 만든다).
 - `stop(long graceMillis)`:
@@ -119,13 +119,13 @@ accept
 - `stop()`은 `stop(shutdownGrace)`와 같다. `awaitTermination(timeout)`을 둔다(JVM `main`에서 서버를 띄울 때 쓴다).
 - 완료 조건: TH-10~12, TH-14 통과. 구 `ShutdownTest`에 해당하는 시나리오를 새 엔진으로 옮긴다.
 
-### P3-09 서버 통계 `[ ]`
+### P3-09 서버 통계 `[x]` (2026-10-18)
 - P1-01의 최소 `ServerStats`를 넓힌다: 열린 연결, 대기 연결, 바쁜 워커, 전체 워커, 누적 요청 수, 거절 수(사유별), 타임아웃 종류별 횟수, 축출된 유휴 연결 수, 정지 후 남은 워커 수.
 - 카운터는 `AtomicInteger`/`AtomicLong`만 쓴다(`LongAdder`는 API 21에 없다).
 - P10 측정과 NAS 앱의 상태 화면이 쓴다.
 - 완료 조건: 각 TH 테스트가 통계 값도 함께 확인한다. TH-18은 P6 이후에 활성화한다(그 전에는 `@Ignore`와 이유).
 
-### P3-10 2단계(Selector 주차) 판단 `[ ]`
+### P3-10 2단계(Selector 주차) 판단 `[~]` (보류: P10 실기기 측정 뒤 판단, docs/research/thread-model.md)
 - P10의 메모리·스레드 측정 결과로 결정한다. 다음 중 하나라도 만족하면 착수한다(제안 기준).
   - AND-06에서 유휴 연결 128개일 때, 워커 스레드 때문에 늘어난 메모리(PSS 증가분)가 50개 연결 부하 시나리오 전체 증가분의 절반을 넘는다.
   - 브라우저 50개 탭이 30초마다 페이지를 다시 읽는 시나리오에서 유휴 연결 축출이 초당 1회를 넘거나, 축출 때문에 생긴 재연결로 페이지 로드 p95가 200 ms 이상 늘어난다.

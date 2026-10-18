@@ -35,7 +35,8 @@ public final class Bench {
         long baseHeap = heapAfterGc();
         int baseThreads = threads();
 
-        Engine engine = new OldEngine();
+        String engineName = System.getProperty("bench.engine", "new");
+        Engine engine = "old".equals(engineName) ? new OldEngine() : new NewEngine();
         port = engine.start();
         List<Conn> open = new ArrayList<Conn>();
         long[] lat; // per-request (or per-transfer) latency in ns
@@ -84,13 +85,19 @@ public final class Bench {
         engine.stop();
 
         StringBuilder sb = new StringBuilder();
-        sb.append("scenario=").append(scenario).append(" engine=old");
+        sb.append("scenario=").append(scenario).append(" engine=").append(engineName);
         sb.append(" heapKB=").append(heap / 1024).append(" threads=").append(threads);
         sb.append(" baseHeapKB=").append(baseHeap / 1024).append(" baseThreads=").append(baseThreads);
         sb.append(load);
         sb.append(" jdk=").append(System.getProperty("java.version"));
         sb.append(" maxHeapMB=").append(Runtime.getRuntime().maxMemory() >> 20);
         System.out.println(sb);
+        // Memory regression gate (README §5.1): -Dbench.maxHeapDeltaKB fails the run above the limit.
+        long limit = Long.getLong("bench.maxHeapDeltaKB", -1);
+        if (limit >= 0 && (heap - baseHeap) / 1024 > limit) {
+            System.err.println("heap delta " + (heap - baseHeap) / 1024 + " KB exceeds " + limit + " KB");
+            System.exit(1);
+        }
     }
 
     /**

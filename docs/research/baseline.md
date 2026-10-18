@@ -20,3 +20,20 @@
 
 - 구 엔진은 연결마다 스레드 1개(idle-N의 threads ≈ 7 + N)와 힙 약 30 KB를 쓴다. 스레드 스택(네이티브 메모리)은 heapKB에 들어가지 않는다.
 - 연결별 할당 바이트(JFR)는 아직 측정하지 않았다.
+
+## 새 엔진 (P3 완료 시점, 2026-10-18)
+
+같은 환경·명령. 기본은 새 엔진이고 `-Dbench.engine=old`로 구 엔진을 고른다. bench용 엔진은 `maxConnectionsPerAddress`와 `maxRequestsPerConnection`만 늘렸다(클라이언트가 모두 127.0.0.1이고 재연결하지 않는다).
+
+| 시나리오 | heapKB | threads | 처리량 | p50 ms | p99 ms |
+|---|---|---|---|---|---|
+| idle-0 | 1204 | 8 | - | - | - |
+| idle-50 | 2713 | 58 | - | - | - |
+| idle-100 | 2949 | 72 | - | - | - |
+| idle-128 | 2984 | 72 | - | - | - |
+| get-50 (3 s) | 3137 | 58 | 171835 req/s | 0.08 | 1.25 |
+| upload-1 (64 MB) | 2020 | 9 | 1815 MB/s | 34.17 | 34.17 |
+| download-4 (64 MB) | 2080 | 11 | 2947 MB/s | 85.07 | 85.08 |
+
+- 스레드 = acceptor + watchdog + 워커(최대 `maxWorkers` 64). idle-100/128에서 64를 넘는 연결은 대기열에 들어가고 가장 오래된 유휴 연결이 축출된다.
+- 메모리 회귀 게이트(CI): 힙 증가분(heapKB - baseHeapKB)이 idle-0 200 KB, idle-100 2120 KB(이 기준값 + 10%)를 넘으면 실패한다. `-Dbench.maxHeapDeltaKB`로 건다.

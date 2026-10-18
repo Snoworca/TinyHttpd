@@ -66,7 +66,7 @@ NanoHttpd(https://github.com/NanoHttpd/nanohttpd)를 포크해 대대적으로 �
 
 ## 테스트 규칙
 
-- 테스트용 HTTP 클라이언트는 OkHttp(`testImplementation`)를 쓴다. 바이트 단위 제어가 필요한 경우에는 raw socket(`junit/keepalive/RawConnection`)을 쓴다.
+- 테스트용 HTTP 클라이언트는 OkHttp(`testImplementation`)를 쓴다. 바이트 단위 제어가 필요한 경우에는 raw socket(`core/src/testFixtures`의 `com.snoworca.tinyhttpd.testing.RawConnection`)을 쓴다. 다른 모듈은 `testFixtures(project(":tinyhttpd-core"))`로 가져온다.
 - 올바른 동작을 단언하지만 현재 코드에서 실패하는 테스트에는 `@Category(KnownDefect.class)`를 붙인다. 이 테스트는 기본 `test`에서 제외되고 `./gradlew :tinyhttpd-core:knownDefectTest`로 실행된다. 결함을 고치면 카테고리를 제거해 기본 스위트로 옮긴다.
 - 결함 테스트 ID(KA-nn 등)는 `docs/research/`의 문서와 연결된다. ID를 바꾸면 문서도 함께 고친다.
 

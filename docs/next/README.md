@@ -83,7 +83,7 @@ P4는 P1에서 만든 API 골격을 완성하는 단계다. 골격(인터페이�
 | R-10 | servlet-api.md §4.2 "Range 파싱은 webserver" | core `FileResponses`로 | P5-06 | `[ ]` |
 | R-11 | servlet-api.md §4.2 `EventStream`, 예제 | `awaitClosed` 추가, `hub.awaitClose` → `es.awaitClosed` | P6-03 | `[ ]` |
 | R-12 | core-analysis.md §2.3 "TLS 별도 연구(예정)" | `tls.md` 링크 | P7-01 | `[ ]` |
-| R-13 | CLAUDE.md "테스트 규칙"의 `junit/keepalive/RawConnection` 경로 | testFixtures 경로로 | P0-04 | `[ ]` |
+| R-13 | CLAUDE.md "테스트 규칙"의 `junit/keepalive/RawConnection` 경로 | testFixtures 경로로 | P0-04 | `[x]` |
 | R-14 | CLAUDE.md "저장소 구성"의 "클래스명은 아직 원본 그대로" | 삭제 | P8-05 | `[ ]` |
 
 ## 5. 기본값 표

@@ -23,7 +23,7 @@ Acceptor ──accept──▶ Connection (소켓, InputBuffer, 출력 스트림
 
 ## 작업
 
-### P1-01 공개 API 골격 `[ ]`
+### P1-01 공개 API 골격 `[x]` (2026-10-18)
 - 패키지 `com.snoworca.tinyhttpd.http`에 servlet-api.md §4.2의 인터페이스를 선언한다: `Handler`, `Filter`, `FilterChain`, `HttpException`, `Request`, `Response`, `EventStream`, `MultipartReader`, `MultipartLimits`, `Part`, `UpgradedConnection`, `Cookie`.
 - 상태 코드는 `int`로 쓰고, 상수는 `HttpStatus` 클래스에 둔다(`OK = 200` …). 이유 문구(reason phrase) 표도 여기에 둔다.
 - `HttpException`은 상태와 메시지 외에 **응답 헤더**를 담을 수 있게 한다(`withHeader(name, value)`). `Retry-After`(P6-01), `Allow`(P8-01) 같은 헤더가 필요하다. servlet-api.md §4.2 스케치를 함께 고친다.
@@ -33,7 +33,7 @@ Acceptor ──accept──▶ Connection (소켓, InputBuffer, 출력 스트림
 - `Request`에 servlet-api.md §4.2 스케치에 없던 `getServerName()`/`getServerPort()`를 추가한다. Servlet과 같은 의미다: absolute-form이면 그 호스트, 아니면 `Host` 헤더의 호스트와 포트. `HostAllowlistFilter`(P4-12)가 쓴다. 스케치 문서도 고친다.
 - 완료 조건: 인터페이스가 컴파일되고 animal-sniffer를 통과한다. javadoc에 servlet-api.md §4.1 원칙 1(이름이 같으면 의미도 같다)과 Servlet과 다른 점을 적는다.
 
-### P1-02 KA/KB 테스트를 새 엔진으로 전환 `[ ]`
+### P1-02 KA/KB 테스트를 새 엔진으로 전환 `[x]` (2026-10-18)
 - `ProbeServer`(구 `NanoHTTPD` 상속)를 새 `Handler` 기반 `ProbeHandlers`로 다시 쓴다. 경로는 그대로 둔다: `/hello`, `/second`, `/query`, `/ignore-body`, `/chunked`, `/short`, `/read-all`, `/parse`.
   - `/parse`(구 `parseBody`)는 `getInputStream()`을 끝까지 읽고 바이트 수를 돌려준다. KA-04/KA-13의 의도(서버가 넘긴 바디 길이를 그대로 보고)는 같다.
   - `/chunked`는 길이를 지정하지 않고 `getOutputStream()`에 출력 버퍼(8 KB)보다 많이 쓴다. 작으면 P2 규칙에 따라 Content-Length가 붙어 KA-03의 의도가 사라진다.
@@ -45,7 +45,7 @@ Acceptor ──accept──▶ Connection (소켓, InputBuffer, 출력 스트림
 - 새 엔진이 요청을 처리하기 전까지는 KB도 실패한다. 그 기간에만 KB 메서드에 `KnownDefect`를 붙이고, 각 KB가 통과하는 작업에서 뗀다(KB-01·03·04: P1-03, KB-02: P1-04, KB-05·06: P1-09).
 - 완료 조건: KA/KB가 새 엔진을 대상으로 컴파일된다. 각 테스트의 단언은 바꾸지 않는다(바꿔야 한다면 keep-alive.md에 이유를 적는다).
 
-### P1-03 Connection과 연결 루프 `[ ]`
+### P1-03 Connection과 연결 루프 `[x]` (2026-10-18)
 - `server.Connection`: 소켓, `InputBuffer`, 출력 스트림, 요청 수, 마지막 활동 시각, 현재 단계(`IDLE`, `READING_HEADERS`, `HANDLING`, `WRITING`, `DRAINING`, `CLOSING`). 단계는 `volatile`로 두어 P3 watchdog이 읽을 수 있게 한다.
 - acceptor는 `ServerSocket`으로 고정한다. `ServerSocketChannel`로 바꿀지는 P0-07(JVM)과 AND-05(Android)를 거쳐 P5-04에서 정한다. 바꾸게 되더라도 영향이 acceptor와 `Connection` 생성부에 머물도록 소켓 생성을 한 곳에 모은다.
 - `server.Acceptor`: `ServerSocket.accept()` 루프. `accept` 실패가 반복되면(예: `EMFILE`) 지수 백오프(10 ms → 최대 1 s)를 둔다(core-analysis.md §2.5).
@@ -57,7 +57,7 @@ Acceptor ──accept──▶ Connection (소켓, InputBuffer, 출력 스트림
 - 임시 응답 경로: 핸들러가 쓴 바이트를 메모리에 모아 `Content-Length`로 보낸다. 요청에 `Connection: close`가 있으면 응답에도 `Connection: close`를 쓰고 닫는다(KB-03). P2-01에서 교체한다.
 - 완료 조건: KB-01, KB-03, KB-04가 새 엔진에서 통과한다. 유휴 타임아웃은 P3 전까지 `soTimeout` 5 s로 임시 유지한다(KB-04, KB-05가 이 값에 맞춰져 있다).
 
-### P1-04 입력 버퍼와 줄 읽기 `[ ]`
+### P1-04 입력 버퍼와 줄 읽기 `[x]` (2026-10-18)
 - `InputBuffer`: 연결당 고정 `byte[]`(기본 8 KB) 하나. `mark/reset`과 `BufferedInputStream`을 쓰지 않는다.
 - 줄 끝: `CRLF`를 기본으로 하고, 단독 `LF`도 받아들인다(RFC 9112 §2.2 허용). **단독 `CR`은 400**이다.
 - 요청 라인 앞의 빈 줄은 최대 1개까지 건너뛴다(RFC 9112 §2.2 권고).
@@ -69,7 +69,7 @@ Acceptor ──accept──▶ Connection (소켓, InputBuffer, 출력 스트림
 - 빌더 검사: `inputBufferBytes ≥ maxRequestLineBytes + 2`. 기본값은 8192 / 8190이다(README §5).
 - 완료 조건: RQ-01~03, RQ-21, KB-02 통과.
 
-### P1-05 요청 라인 파싱 `[ ]`
+### P1-05 요청 라인 파싱 `[x]` (2026-10-18)
 - 형식: `method SP request-target SP HTTP-version`. 공백이 정확히 하나가 아니면 400.
 - method: `tchar`만 허용. 알려진 메서드 목록과 무관하게 받아들이고, 처리 여부는 핸들러/라우터(405)가 정한다. 대소문자를 구분한다(`get`은 `GET`이 아니다).
 - request-target:
@@ -81,7 +81,7 @@ Acceptor ──accept──▶ Connection (소켓, InputBuffer, 출력 스트림
 - 한도: 요청 라인이 `maxRequestLineBytes`(8190 B)를 넘으면 **414 후 닫기**.
 - 완료 조건: RQ-19, RQ-20, RQ-22, RQ-23 통과.
 
-### P1-06 헤더 파싱 `[ ]`
+### P1-06 헤더 파싱 `[x]` (2026-10-18)
 - field-name: `tchar`만. 이름과 `:` 사이 공백은 **400**(RFC 9112 §5.1, 요청 스머글링 방지).
 - obs-fold(줄 앞 공백으로 이어지는 헤더)는 **400**.
 - 값: 앞뒤 OWS를 잘라 낸다. `NUL`, 단독 `CR`/`LF`가 있으면 400.
@@ -92,12 +92,12 @@ Acceptor ──accept──▶ Connection (소켓, InputBuffer, 출력 스트림
 - 헤더 도중 EOF → 응답 없이 닫는다(KA-07).
 - 완료 조건: KA-06, KA-07, RQ-04~07, RQ-24~27 통과. 응답 후 닫는 테스트(KA-06, RQ-26, RQ-27)의 Linux CI 통과는 P1-15 뒤에 확인한다.
 
-### P1-07 Exchange `[ ]`
+### P1-07 Exchange `[x]` (2026-10-18)
 - `server.Exchange implements Request`: 요청 라인, 헤더, 원본 쿼리, 바디 스트림, 속성, 원격/로컬 주소. **요청마다 새로 만든다.**
 - 쿼리 파라미터 맵은 처음 조회할 때 원본 쿼리에서 만든다(지연 파싱). 쿼리 디코딩 규칙(잘못된 `%` 처리 등)은 P4-05에서 확정하고, 이 단계에서는 UTF-8 퍼센트 디코딩과 `+` → 공백만 구현한다.
 - 완료 조건: KA-16 통과.
 
-### P1-08 요청 바디 프레이밍 결정 `[ ]`
+### P1-08 요청 바디 프레이밍 결정 `[x]` (2026-10-18)
 RFC 9112 §6.3의 순서대로 결정한다.
 
 | 조건 | 처리 | 테스트 |
@@ -118,47 +118,47 @@ RFC 9112 §6.3의 순서대로 결정한다.
   - chunked면 `ChunkedInputStream`이 누적 바이트를 세다가 넘는 순간 `HttpException(413)`에 해당하는 `IOException`을 던지고 닫기로 표시한다(RQ-28)
 - 완료 조건: 표의 테스트와 RQ-28이 모두 통과한다.
 
-### P1-09 `BoundedInputStream` `[ ]`
+### P1-09 `BoundedInputStream` `[x]` (2026-10-18)
 - `n`바이트를 읽으면 `-1`. `available()`도 남은 길이를 넘지 않는다.
 - 상대가 `n`바이트 전에 EOF를 보내면 `TruncatedBodyException extends IOException`을 던지고, 연결을 닫기로 표시한다.
 - `close()`는 소켓을 닫지 않는다. 남은 바이트는 drain(P1-12)이 처리한다.
 - 읽은 바이트 수를 기록한다(drain과 접근 로그에 쓴다).
 - 완료 조건: KA-10, RQ-16, KB-05, KB-06 통과.
 
-### P1-10 `ChunkedInputStream` `[ ]`
+### P1-10 `ChunkedInputStream` `[x]` (2026-10-18)
 - 청크 크기: 16진수, 앞의 0 허용, `Long` 범위 초과는 오류. 청크 크기 줄(chunk-ext 포함)은 `maxChunkSizeLineBytes`(1 KB)까지. chunk-ext는 무시한다.
 - 데이터 뒤 `CRLF`가 아니면 오류.
 - trailer: `maxTrailerBytes`(8 KB)까지 읽어 버린다. 노출하지 않는다(필요해지면 `Request.getTrailers()`를 추가한다).
 - 오류는 `MalformedBodyException extends IOException` + 닫기 표시. 아직 핸들러가 응답을 커밋하지 않았으면 서버가 400을 보낸다.
 - 완료 조건: KA-04, RQ-13~15 통과.
 
-### P1-11 `Expect: 100-continue` `[ ]`
+### P1-11 `Expect: 100-continue` `[x]` (2026-10-18)
 - `Expect: 100-continue`이고 HTTP/1.1이면, 핸들러가 **바디 스트림을 처음 읽을 때** `HTTP/1.1 100 Continue\r\n\r\n`을 보내고 flush한다.
 - 핸들러가 바디를 읽지 않고 응답하면 100을 보내지 않는다. 이 경우 클라이언트가 바디를 보낼지 알 수 없으므로 drain하지 않고 **연결을 닫는다**(RFC 9110 §10.1.1이 허용).
 - 바디 길이가 0이면(Content-Length: 0) 100을 보내지 않는다.
 - HTTP/1.0의 `Expect`는 무시한다. `100-continue`가 아닌 기대값은 417 + 닫기.
 - 완료 조건: KA-15, RQ-18 통과.
 
-### P1-12 핸들러 이후 drain `[ ]`
+### P1-12 핸들러 이후 drain `[x]` (2026-10-18)
 - 응답을 끝내고(flush) 나서 바디에 남은 바이트를 `maxDrainBytes`(64 KB)까지 읽어 버린다.
 - 한도를 넘거나, `bodyReadTimeout` 안에 끝나지 않거나, 바디가 잘리면(`TruncatedBodyException`) 연결을 닫는다.
 - 응답을 drain보다 먼저 보내므로, 업로드를 거부한 응답(413 등)은 클라이언트가 받는다. 이 경우 연결 종료는 lingering close(P1-15)가 처리한다.
 - 완료 조건: KA-01, RQ-17 통과(Linux CI 포함).
 
-### P1-13 파싱 오류 응답 `[ ]`
+### P1-13 파싱 오류 응답 `[x]` (2026-10-18)
 - 대상 상태: 400, 408, 413, 414, 417, 431, 501, 505.
 - 핸들러를 부르지 않고 엔진이 직접 쓴다. 본문은 짧은 `text/plain`, 항상 `Connection: close`, 쓴 뒤 닫는다.
 - 응답 바이트는 상태별로 미리 만든 고정 부분(상태 줄, `Content-Type`, `Content-Length`, `Connection: close`, 본문)에 캐시한 `Date` 줄(P2-04, 1초마다 갱신)만 끼워 조립한다. RFC 9110 §6.6.1은 4xx/5xx에도 `Date`를 요구한다. 요청마다 문자열을 만들지 않는다.
 - P2-04의 `Date` 캐시를 이 작업에서 먼저 만든다.
 - 완료 조건: KA-08 통과. 모든 RQ 오류 테스트가 상태 줄과 `Connection: close`를 확인한다.
 
-### P1-14 파서 견고성 테스트 `[ ]`
+### P1-14 파서 견고성 테스트 `[x]` (2026-10-18)
 - 무작위 입력 테스트: 시드를 고정한 난수로 요청 바이트를 변형(바이트 삭제·삽입·교체, CR/LF 주입, 길이 필드 변경)해 1만 건을 보낸다.
 - 검사: 처리되지 않은 예외가 없다, 워커가 회전하지 않는다(CPU 시간), 연결이 결국 닫히거나 정상 응답한다.
 - 실패한 입력은 시드와 바이트를 출력해 RQ 테스트로 고정한다.
 - 완료 조건: 1만 건 통과. CI에서는 1천 건만 돌린다(시간 제한).
 
-### P1-15 lingering close (평문) `[ ]`
+### P1-15 lingering close (평문) `[x]` (2026-10-18)
 - 읽지 않은 입력을 남긴 채 닫으면 Linux(Android 포함)는 RST를 보내고, 클라이언트가 아직 읽지 않은 응답이 버려질 수 있다(keep-alive.md §2.1 KA-14). 이 위험은 P1의 모든 "응답 후 닫기" 경로에 있다: 431(KA-06, RQ-26), 414(RQ-20), 400(RQ-14, 15), 413(RS-23), drain 초과(RQ-17). 그래서 P3이 아니라 이 단계에서 구현한다.
 - 서버가 먼저 닫는 경우의 순서:
   1. 출력 버퍼 flush
