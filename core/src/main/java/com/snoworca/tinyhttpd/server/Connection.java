@@ -272,6 +272,10 @@ final class Connection {
             if (es != null) {
                 es.ownerReturned();
             }
+            Upgraded u = upgraded;
+            if (u != null) {
+                u.ended();
+            }
         }
     }
 
@@ -389,7 +393,7 @@ final class Connection {
         }
         Upgraded u = upgraded;
         if (u != null) {
-            u.serverStopping = true;
+            u.fireStop();
         }
     }
 

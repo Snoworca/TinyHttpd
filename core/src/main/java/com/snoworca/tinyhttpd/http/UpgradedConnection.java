@@ -24,4 +24,17 @@ public interface UpgradedConnection extends Closeable {
 
     /** @return true once the server is stopping; protocols should say goodbye and close */
     boolean isServerStopping();
+
+    /**
+     * Registers a callback run once, on the stopping thread, when the server starts to stop, so the protocol can
+     * send its goodbye (WebSocket close 1001). It must not block for long; writes are still bounded by the write
+     * timeout.
+     *
+     * @param callback the callback
+     */
+    void onServerStop(Runnable callback);
+
+    /** Closes the connection at once (no protocol goodbye). */
+    @Override
+    void close();
 }
