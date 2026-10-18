@@ -106,6 +106,8 @@ public final class TinyHttpd {
         ThreadFactory threadFactory;
         boolean daemon = true;
         String serverHeader;
+        boolean hostCheck = true;
+        final List<String> allowedHosts = new ArrayList<String>();
         int inputBufferBytes = 8192;
         int outputBufferBytes = 8192;
         int maxRequestLineBytes = 8190;
@@ -220,6 +222,29 @@ public final class TinyHttpd {
          */
         public Builder daemon(boolean daemon) {
             this.daemon = daemon;
+            return this;
+        }
+
+        /**
+         * DNS rebinding defense, on by default: requests whose host is not an IP literal, {@code localhost} or an
+         * allowed name get 421 ({@link com.snoworca.tinyhttpd.http.filter.HostAllowlistFilter}).
+         *
+         * @param enabled false to accept any host
+         * @return this builder
+         */
+        public Builder hostCheck(boolean enabled) {
+            this.hostCheck = enabled;
+            return this;
+        }
+
+        /**
+         * @param names host names allowed besides IP literals and {@code localhost}, for example {@code nas.local}
+         * @return this builder
+         */
+        public Builder allowedHosts(String... names) {
+            for (String n : names) {
+                allowedHosts.add(n);
+            }
             return this;
         }
 

@@ -28,7 +28,7 @@ public class ProbeServer {
     }
 
     ProbeServer(TinyHttpd.Builder builder) {
-        server = builder.port(0).handler(HANDLER).threadFactory(new ThreadFactory() {
+        server = builder.port(0).hostCheck(false).handler(HANDLER).threadFactory(new ThreadFactory() {
 
             @Override
             public Thread newThread(Runnable r) {

@@ -27,6 +27,9 @@ public abstract class EngineTestBase {
 
     protected int port;
 
+    /** Tests send {@code Host: x}; the host check (API-20/21) is tested on its own. */
+    protected boolean hostCheck;
+
     protected final Handler router = new Handler() {
 
         @Override
@@ -47,7 +50,7 @@ public abstract class EngineTestBase {
     }
 
     protected void start(TinyHttpd.Builder builder) throws IOException {
-        server = builder.port(0).handler(router).build();
+        server = builder.port(0).handler(router).hostCheck(hostCheck).build();
         server.start();
         port = server.getPort();
     }

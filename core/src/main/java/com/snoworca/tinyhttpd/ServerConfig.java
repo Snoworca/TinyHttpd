@@ -9,6 +9,7 @@ import java.util.concurrent.ThreadFactory;
 import com.snoworca.tinyhttpd.http.ErrorHandler;
 import com.snoworca.tinyhttpd.http.Filter;
 import com.snoworca.tinyhttpd.http.Handler;
+import com.snoworca.tinyhttpd.http.filter.HostAllowlistFilter;
 import com.snoworca.tinyhttpd.log.TinyLog;
 
 /**
@@ -20,6 +21,7 @@ public final class ServerConfig {
     public final int port;
     public final InetAddress bindAddress;
     public final Handler handler;
+    /** Filters in order; the host check comes first when enabled. */
     public final List<Filter> filters;
     public final ErrorHandler errorHandler;
     public final TinyLog logger;
@@ -65,7 +67,12 @@ public final class ServerConfig {
         port = b.port;
         bindAddress = b.bindAddress;
         handler = b.handler;
-        filters = Collections.unmodifiableList(new ArrayList<Filter>(b.filters));
+        List<Filter> all = new ArrayList<Filter>(b.filters.size() + 1);
+        if (b.hostCheck) {
+            all.add(new HostAllowlistFilter(b.allowedHosts.toArray(new String[0])));
+        }
+        all.addAll(b.filters);
+        filters = Collections.unmodifiableList(all);
         errorHandler = b.errorHandler;
         logger = b.logger;
         tls = b.tls;

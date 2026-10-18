@@ -368,7 +368,7 @@ public class ThreadingTest extends EngineTestBase {
     public void th14_startStopDoesNotLeak() throws Exception {
         int before = tinyThreads();
         for (int i = 0; i < 100; i++) {
-            TinyHttpd s = TinyHttpd.builder().port(0).handler(router).build();
+            TinyHttpd s = TinyHttpd.builder().port(0).hostCheck(false).handler(router).build();
             s.start();
             RawConnection c = request(s.getPort(), "/hello");
             c.read();

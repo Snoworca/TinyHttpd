@@ -143,5 +143,5 @@ P4는 P1에서 만든 API 골격을 완성하는 단계다. 골격(인터페이�
 
 - Android 실기기 목록: 측정에 쓸 기기와 OS 버전 (P10)
 - 배포 경로: Maven Central, JitPack, 또는 로컬 배포만 (P12)
-- `HostAllowlistFilter`(DNS rebinding 방어)를 **기본으로 켤지** (P4-12). 켜지 않으면 WebSocket 동일 출처 검사와 `CsrfFilter`가 DNS rebinding을 막지 못한다. 권장: 기본으로 켠다. IP 리터럴과 `localhost`는 기본 허용이므로 LAN 사용에는 설정이 필요 없다
+- (2026-10-18 권장안 채택: 기본으로 켠다. `hostCheck(false)`로 끈다) `HostAllowlistFilter`(DNS rebinding 방어)를 **기본으로 켤지** (P4-12). 켜지 않으면 WebSocket 동일 출처 검사와 `CsrfFilter`가 DNS rebinding을 막지 못한다. 권장: 기본으로 켠다. IP 리터럴과 `localhost`는 기본 허용이므로 LAN 사용에는 설정이 필요 없다
 - 메모리 목표치(§5.1 제안값)를 받아들일지, CI 게이트를 켤 시점(제안: P3 완료 시)
