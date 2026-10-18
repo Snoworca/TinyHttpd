@@ -38,6 +38,9 @@ public class ThreadingTest extends EngineTestBase {
 
     private final CountDownLatch release = new CountDownLatch(1);
 
+    /** Counted down when a /block handler is running (busy also counts TLS handshakes). */
+    private final CountDownLatch entered = new CountDownLatch(1);
+
     private final AtomicReference<Object> seen = new AtomicReference<Object>();
 
     @Before
@@ -53,6 +56,7 @@ public class ThreadingTest extends EngineTestBase {
 
             @Override
             public void handle(Request req, Response res) throws IOException {
+                entered.countDown();
                 try {
                     release.await(10, TimeUnit.SECONDS);
                 } catch (InterruptedException e) {
@@ -316,7 +320,7 @@ public class ThreadingTest extends EngineTestBase {
             idle.add(c);
         }
         final RawConnection inFlight = request(port, "/block");
-        awaitBusy(1);
+        assertTrue(entered.await(3, TimeUnit.SECONDS));
         Thread stopper = new Thread(new Runnable() {
 
             @Override
