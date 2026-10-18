@@ -194,4 +194,19 @@ public class WebServerTest {
         start(new StaticFileHandler(root), null);
         assertEquals(403, send("GET", "/docs/", "").status());
     }
+
+    @Test
+    public void settingsChangeWhileServing() throws IOException {
+        StaticFileHandler h = new StaticFileHandler(root);
+        start(h, null);
+        assertEquals(403, send("GET", "/docs/", "").status());
+        h.directoryListing(true);
+        assertEquals(200, send("GET", "/docs/", "").status());
+        h.untrustedContent(true);
+        assertEquals("sandbox", send("GET", "/hello.txt", "").header("content-security-policy"));
+        h.maxFileBytes(5);
+        assertEquals(403, send("GET", "/hello.txt", "").status());
+        h.maxFileBytes(-1);
+        assertEquals(200, send("GET", "/hello.txt", "").status());
+    }
 }

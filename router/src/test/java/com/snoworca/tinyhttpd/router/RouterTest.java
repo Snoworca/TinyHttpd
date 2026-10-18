@@ -1,6 +1,8 @@
 package com.snoworca.tinyhttpd.router;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
@@ -97,6 +99,18 @@ public class RouterTest {
         Router api = new Router().get("/items/{id}", says("item"));
         Router root = new Router().mount("/api", api).get("/", says("root"));
         assertEquals("item {id=7} /items/7", send(root, "GET", "/api/items/7").body);
+        assertEquals("root {} /", send(root, "GET", "/").body);
+    }
+
+    @Test
+    public void mod06_unmountWhileServing() throws IOException {
+        Router root = new Router().get("/", says("root"));
+        assertEquals(404, send(root, "GET", "/share/a").status());
+        root.mount("/share", says("share"));
+        assertEquals(200, send(root, "GET", "/share/a").status());
+        assertTrue(root.unmount("/share"));
+        assertFalse(root.unmount("/share"));
+        assertEquals(404, send(root, "GET", "/share/a").status());
         assertEquals("root {} /", send(root, "GET", "/").body);
     }
 }

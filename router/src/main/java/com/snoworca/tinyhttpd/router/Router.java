@@ -39,12 +39,15 @@ public final class Router implements Handler {
 
         final int order;
 
+        final String pattern;
+
         Route(String method, String pattern, Handler handler, boolean mount, int order) {
             this.method = method;
             this.handler = handler;
             this.mount = mount;
             this.order = order;
             String p = pattern.startsWith("/") ? pattern.substring(1) : pattern;
+            this.pattern = p;
             this.segments = p.isEmpty() ? new String[0] : p.split("/", -1);
             int lit = 0;
             boolean r = false;
@@ -156,6 +159,25 @@ public final class Router implements Handler {
     public synchronized Router mount(String prefix, Handler handler) {
         routes.add(new Route("*", prefix, handler, true, routes.size()));
         return this;
+    }
+
+    /**
+     * Removes the handlers mounted at a prefix; safe while serving (requests already routed finish normally).
+     *
+     * @param prefix the prefix given to {@link #mount}
+     * @return whether a mount was removed
+     */
+    public synchronized boolean unmount(String prefix) {
+        String p = prefix.startsWith("/") ? prefix.substring(1) : prefix;
+        boolean removed = false;
+        for (java.util.Iterator<Route> it = routes.iterator(); it.hasNext();) {
+            Route r = it.next();
+            if (r.mount && r.pattern.equals(p)) {
+                it.remove();
+                removed = true;
+            }
+        }
+        return removed;
     }
 
     @Override

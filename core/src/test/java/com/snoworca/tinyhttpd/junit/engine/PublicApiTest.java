@@ -90,7 +90,7 @@ public class PublicApiTest extends EngineTestBase {
         assertEquals(8190, c.maxRequestLineBytes);
         assertEquals(16384, c.maxHeaderBytes);
         assertEquals(100, c.maxHeaderCount);
-        assertEquals(-1, c.maxRequestBodyBytes);
+        assertEquals(-1, c.getMaxRequestBodyBytes());
         assertEquals(65536, c.maxDrainBytes);
         assertEquals(1024, c.maxChunkSizeLineBytes);
         assertEquals(8192, c.maxTrailerBytes);

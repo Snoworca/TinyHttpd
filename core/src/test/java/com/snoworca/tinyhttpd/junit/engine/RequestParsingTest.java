@@ -306,6 +306,38 @@ public class RequestParsingTest extends EngineTestBase {
     }
 
     @Test
+    public void rq28_globalLimitChangedWhileRunning() throws IOException {
+        routes.put("/u", new Handler() {
+
+            @Override
+            public void handle(Request req, Response res) throws IOException {
+                InputStream in = req.getInputStream();
+                while (in.read() >= 0) {
+                    // drain
+                }
+                res.setStatus(204);
+            }
+        });
+        start();
+        String req = "POST /u HTTP/1.1\r\nHost: x\r\nContent-Length: 20\r\n\r\n" + repeat('u', 20);
+        RawConnection c = connect();
+        try {
+            c.send(req);
+            assertEquals(204, c.read().status());
+        } finally {
+            c.close();
+        }
+        server.setMaxRequestBodyBytes(10);
+        c = connect();
+        try {
+            c.send(req);
+            assertEquals(413, c.read().status());
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
     public void rq28_chunkedBodyOverGlobalLimit() throws IOException {
         routes.put("/c", new Handler() {
 

@@ -172,7 +172,7 @@ final class RequestParser {
                 throw new ParseError(501, "unsupported transfer coding");
             }
             ex.contentLength = -1;
-            ex.body = new BodyInput.Chunked(conn, cfg.maxRequestBodyBytes, cfg.maxChunkSizeLineBytes,
+            ex.body = new BodyInput.Chunked(conn, cfg.getMaxRequestBodyBytes(), cfg.maxChunkSizeLineBytes,
                     cfg.maxTrailerBytes);
         } else if (!cl.isEmpty()) {
             long length = -1;
@@ -185,12 +185,13 @@ final class RequestParser {
                     length = n;
                 }
             }
-            if (cfg.maxRequestBodyBytes >= 0 && length > cfg.maxRequestBodyBytes) {
+            long max = cfg.getMaxRequestBodyBytes();
+            if (max >= 0 && length > max) {
                 throw new ParseError(413, "body too large");
             }
             ex.contentLength = length;
             ex.body = length == 0 ? new BodyInput.Empty(conn)
-                    : new BodyInput.Bounded(conn, length, cfg.maxRequestBodyBytes);
+                    : new BodyInput.Bounded(conn, length, max);
         } else {
             ex.contentLength = 0;
             ex.body = new BodyInput.Empty(conn);

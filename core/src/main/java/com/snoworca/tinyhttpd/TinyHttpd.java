@@ -96,6 +96,15 @@ public final class TinyHttpd {
         return config;
     }
 
+    /**
+     * Changes the request body limit while running; requests whose body has not started apply the new value.
+     *
+     * @param value request body limit (413), -1 for none
+     */
+    public void setMaxRequestBodyBytes(long value) {
+        config.setMaxRequestBodyBytes(value);
+    }
+
     /** @return true between {@link #start()} and the end of {@link #stop()} */
     public boolean isAlive() {
         return server.isAlive();

@@ -51,7 +51,8 @@ public final class ServerConfig {
     public final int maxRequestLineBytes;
     public final int maxHeaderBytes;
     public final int maxHeaderCount;
-    public final long maxRequestBodyBytes;
+    /** Changed at runtime through {@link TinyHttpd#setMaxRequestBodyBytes}. */
+    private volatile long maxRequestBodyBytes;
     public final long maxDrainBytes;
     public final int maxChunkSizeLineBytes;
     public final int maxTrailerBytes;
@@ -132,5 +133,14 @@ public final class ServerConfig {
         eventQueueEvents = b.eventQueueEvents;
         eventQueueBytes = b.eventQueueBytes;
         maxUpgradedConnections = b.maxUpgradedConnections;
+    }
+
+    /** @return request body limit (413), -1 for none */
+    public long getMaxRequestBodyBytes() {
+        return maxRequestBodyBytes;
+    }
+
+    void setMaxRequestBodyBytes(long value) {
+        maxRequestBodyBytes = value;
     }
 }

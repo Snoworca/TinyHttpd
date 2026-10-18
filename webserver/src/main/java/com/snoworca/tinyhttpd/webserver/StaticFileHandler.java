@@ -2,12 +2,12 @@ package com.snoworca.tinyhttpd.webserver;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.snoworca.tinyhttpd.http.FileResponses;
 import com.snoworca.tinyhttpd.http.Handler;
@@ -21,6 +21,7 @@ import com.snoworca.tinyhttpd.server.PercentCodec;
  * Serves files under a root directory with {@link FileResponses} (ranges, validators, nosniff). Directories use an
  * index file, else a listing when enabled (off by default: 403). Paths are already normalized by the server; the
  * canonical file must still lie under the root, so symbolic links leading outside are refused unless allowed.
+ * Settings may be changed while serving; other threads see a change at once.
  */
 public final class StaticFileHandler implements Handler {
 
@@ -31,15 +32,17 @@ public final class StaticFileHandler implements Handler {
 
     private final String rootPath;
 
-    private final List<String> indexFiles = new ArrayList<String>(Arrays.asList("index.html", "index.htm"));
+    private final List<String> indexFiles = new CopyOnWriteArrayList<String>(Arrays.asList("index.html", "index.htm"));
 
-    private final Map<String, WebServerPlugin> plugins = new HashMap<String, WebServerPlugin>();
+    private final Map<String, WebServerPlugin> plugins = new ConcurrentHashMap<String, WebServerPlugin>();
 
-    private DirectoryListingHandler listing;
+    private volatile DirectoryListingHandler listing;
 
-    private boolean followSymlinksOutsideRoot;
+    private volatile boolean followSymlinksOutsideRoot;
 
-    private boolean untrustedContent;
+    private volatile boolean untrustedContent;
+
+    private volatile long maxFileBytes = -1;
 
     /**
      * @param root the directory to serve
@@ -77,6 +80,15 @@ public final class StaticFileHandler implements Handler {
      */
     public StaticFileHandler untrustedContent(boolean enabled) {
         untrustedContent = enabled;
+        return this;
+    }
+
+    /**
+     * @param bytes largest file served (403 above it), -1 for none; default -1
+     * @return this handler
+     */
+    public StaticFileHandler maxFileBytes(long bytes) {
+        maxFileBytes = bytes;
         return this;
     }
 
@@ -122,6 +134,7 @@ public final class StaticFileHandler implements Handler {
                 }
             }
             if (index == null) {
+                DirectoryListingHandler listing = this.listing;
                 if (listing == null) {
                     throw new HttpException(403, "directory listing disabled");
                 }
@@ -135,6 +148,10 @@ public final class StaticFileHandler implements Handler {
         }
         if (!file.isFile()) {
             throw new HttpException(404, "not found");
+        }
+        long max = maxFileBytes;
+        if (max >= 0 && file.length() > max) {
+            throw new HttpException(403, "file too large");
         }
         if (untrustedContent) {
             res.setHeader("Content-Security-Policy", "sandbox");
