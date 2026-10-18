@@ -49,7 +49,7 @@ keep-alive 관련 문제는 [keep-alive 연구](keep-alive.md)에 측정 결과�
 - 핸드셰이크는 워커 스레드의 첫 read에서 지연 수행된다. accept 스레드를 막지는 않지만 **핸드셰이크 전용 타임아웃이 없다.** read 타임아웃 5초가 그 역할을 겸한다.
 - 핸드셰이크 실패(`SSLException`)를 받으면 같은 TLS 스트림에 평문 HTTP 500 응답을 쓰려고 시도한다(`HTTPSession.execute()`의 catch 블록).
 - `makeSSLSocketFactory`는 예외를 `new IOException(e.getMessage())`로 감싸 **원인(cause)을 버린다.** keystore는 classpath 경로로만 받는다. Android에서는 JKS 대신 BKS나 PKCS12가 필요하다(#523, #516).
-- TLS 상세는 별도 연구로 다룬다(예정).
+- TLS 상세: [tls.md](tls.md).
 
 ### 2.4 URL, 헤더, 쿠키
 - 경로를 세그먼트로 나누기 전에 전체를 퍼센트 디코딩한다. `%2F`가 `/`가 되어 경로 해석이 바뀐다(#451).
