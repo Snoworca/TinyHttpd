@@ -178,6 +178,8 @@
 
 ### 4.2 core 인터페이스 스케치
 
+> 2026-10-18: 아래는 설계 당시의 초안이다. 실제 API는 코드(`core/src/main/java/com/snoworca/tinyhttpd/http`)가 기준이다. 초안 이후 바뀐 점: `Request.getServerName()/getServerPort()`, `HttpException.withHeader`, 빌더의 `.tls(TlsConfig)`/`listen(...)`, SSE와 WebSocket은 워커 예산이 아닌 장수명 예산을 쓴다(P3), `sendFile(FileChannel…)`·`FileResource`·`FileResponses`(Range는 core), `EventStream.awaitClosed`.
+
 패키지는 예시로 `com.snoworca.tinyhttpd.http`를 쓴다. 이름은 Jetty 12처럼 `Request`/`Response`/`Handler`를 제안한다. 테스트가 쓰는 Apache HttpClient의 `org.apache.http.HttpRequest/HttpResponse`, Java 11의 `java.net.http.HttpRequest`와 겹치지 않게 하려는 것이다. 기존 `protocols.http.response.Response`는 삭제한다(아래 §5).
 
 ```java

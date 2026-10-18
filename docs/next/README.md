@@ -71,17 +71,17 @@ P4는 P1에서 만든 API 골격을 완성하는 단계다. 골격(인터페이�
 
 | ID | 고칠 곳 | 내용 | 담당 | 상태 |
 |---|---|---|---|---|
-| R-01 | servlet-api.md §4.2 `Request` 스케치 | `getServerName()`/`getServerPort()` 추가 | P1-01 | `[ ]` |
-| R-02 | servlet-api.md §4.2 `HttpException` | `withHeader` 추가 | P1-01 | `[ ]` |
-| R-03 | keep-alive.md §2.1 | KA-14 소유를 P1으로, `awaitWorkersIdle` 재정의 이유, "수정됨" 열 추가(P1에서 만듦) | P1-02, P1-15 | `[ ]` |
-| R-04 | keep-alive.md §2.1 "수정됨" 열 | P2, P3 소유 KA를 채움 | P2, P3 단계 완료 | `[ ]` |
-| R-05 | keep-alive.md §4.9 | lingering close 64 KB 상한 → EOF 또는 2 s | P1-15 | `[ ]` |
-| R-06 | keep-alive.md §4.7 | header 타임아웃은 워커가 `soTimeout`으로 지킴, watchdog 주기 500 ms | P3-03 | `[ ]` |
-| R-07 | servlet-api.md §4.2 빌더 예제 | `.sslServerSocketFactory` → `.tls(...)`, `.maxWorkers(48)`/`.maxEventStreams(8)`과 "SSE는 워커 점유" 주석 → 장수명 예산 설명 | P4-01, P3-01 | `[ ]` |
-| R-08 | servlet-api.md §5 websocket 행, §6 리스크 1 | "업그레이드/SSE 연결이 워커를 점유" → 장수명 예산(P3 모델), 대안 P6-07 | P3-01, P6-01 | `[ ]` |
-| R-09 | servlet-api.md §4.2 `sendFile` 스케치 | `sendFile(FileChannel…)`, `FileResource` 추가. transferTo 문장은 P5-04 결정에 맞춤 | P5-05 | `[ ]` |
-| R-10 | servlet-api.md §4.2 "Range 파싱은 webserver" | core `FileResponses`로 | P5-06 | `[ ]` |
-| R-11 | servlet-api.md §4.2 `EventStream`, 예제 | `awaitClosed` 추가, `hub.awaitClose` → `es.awaitClosed` | P6-03 | `[ ]` |
+| R-01 | servlet-api.md §4.2 `Request` 스케치 | `getServerName()`/`getServerPort()` 추가 | P1-01 | `[x]` |
+| R-02 | servlet-api.md §4.2 `HttpException` | `withHeader` 추가 | P1-01 | `[x]` |
+| R-03 | keep-alive.md §2.1 | KA-14 소유를 P1으로, `awaitWorkersIdle` 재정의 이유, "수정됨" 열 추가(P1에서 만듦) | P1-02, P1-15 | `[x]` |
+| R-04 | keep-alive.md §2.1 "수정됨" 열 | P2, P3 소유 KA를 채움 | P2, P3 단계 완료 | `[x]` |
+| R-05 | keep-alive.md §4.9 | lingering close 64 KB 상한 → EOF 또는 2 s | P1-15 | `[x]` |
+| R-06 | keep-alive.md §4.7 | header 타임아웃은 워커가 `soTimeout`으로 지킴, watchdog 주기 500 ms | P3-03 | `[x]` |
+| R-07 | servlet-api.md §4.2 빌더 예제 | `.sslServerSocketFactory` → `.tls(...)`, `.maxWorkers(48)`/`.maxEventStreams(8)`과 "SSE는 워커 점유" 주석 → 장수명 예산 설명 | P4-01, P3-01 | `[x]` |
+| R-08 | servlet-api.md §5 websocket 행, §6 리스크 1 | "업그레이드/SSE 연결이 워커를 점유" → 장수명 예산(P3 모델), 대안 P6-07 | P3-01, P6-01 | `[x]` |
+| R-09 | servlet-api.md §4.2 `sendFile` 스케치 | `sendFile(FileChannel…)`, `FileResource` 추가. transferTo 문장은 P5-04 결정에 맞춤 | P5-05 | `[x]` |
+| R-10 | servlet-api.md §4.2 "Range 파싱은 webserver" | core `FileResponses`로 | P5-06 | `[x]` |
+| R-11 | servlet-api.md §4.2 `EventStream`, 예제 | `awaitClosed` 추가, `hub.awaitClose` → `es.awaitClosed` | P6-03 | `[x]` |
 | R-12 | core-analysis.md §2.3 "TLS 별도 연구(예정)" | `tls.md` 링크 | P7-01 | `[x]` |
 | R-13 | CLAUDE.md "테스트 규칙"의 `junit/keepalive/RawConnection` 경로 | testFixtures 경로로 | P0-04 | `[x]` |
 | R-14 | CLAUDE.md "저장소 구성"의 "클래스명은 아직 원본 그대로" | 삭제 | P8-05 | `[x]` |
