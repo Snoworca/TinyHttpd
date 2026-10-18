@@ -1,0 +1,40 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build
+        run: ./gradlew build
+
+      # Known defects are expected to fail until fixed; the task itself sets ignoreFailures.
+      - name: Known defect tests
+        continue-on-error: true
+        run: ./gradlew :tinyhttpd-core:knownDefectTest
+
+      - name: Upload known defect results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: knownDefectTest-results
+          path: core/build/test-results/knownDefectTest
+          if-no-files-found: warn
+
+      # Memory regression gate (README §5.1): new-engine baseline + 10% (docs/research/baseline.md).
+      - name: Bench memory gate idle-0 / idle-100
+        run: |
+          ./gradlew -q :bench:run --args='idle-0' -Dbench.maxHeapDeltaKB=200 | tee -a "$GITHUB_STEP_SUMMARY"
+          ./gradlew -q :bench:run --args='idle-100' -Dbench.maxHeapDeltaKB=2120 | tee -a "$GITHUB_STEP_SUMMARY"
