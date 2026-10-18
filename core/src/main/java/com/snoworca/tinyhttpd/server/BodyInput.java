@@ -238,7 +238,7 @@ abstract class BodyInput extends InputStream {
 
         private String line(int max) throws IOException {
             try {
-                return in.readLine(max, 400);
+                return in.readLine(max, 400, true);
             } catch (ParseError e) {
                 throw new MalformedBodyException("chunked: " + e.getMessage());
             } catch (java.io.EOFException e) {

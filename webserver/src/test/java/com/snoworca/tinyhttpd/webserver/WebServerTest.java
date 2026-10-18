@@ -137,7 +137,7 @@ public class WebServerTest {
         start(new StaticFileHandler(root), null);
         RawResponse r = send("GET", "//evil.example", "");
         assertEquals(302, r.status());
-        assertEquals("/evil.example/", r.header("location"));
+        assertEquals("./evil.example/", r.header("location"));
     }
 
     @Test
@@ -295,5 +295,14 @@ public class WebServerTest {
         stop.set(true);
         flipper.join(2000);
         assertTrue(bad.toString(), bad.isEmpty());
+    }
+
+    /** Relative, so it stays inside a Router mount whose handler sees only the path below the mount. */
+    @Test
+    public void directoryRedirectIsRelative() throws IOException {
+        start(new StaticFileHandler(root).directoryListing(true), null);
+        RawResponse r = send("GET", "/docs?x=1", "");
+        assertEquals(302, r.status());
+        assertEquals("./docs/?x=1", r.header("location"));
     }
 }

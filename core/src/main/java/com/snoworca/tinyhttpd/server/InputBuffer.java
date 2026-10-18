@@ -61,11 +61,19 @@ final class InputBuffer {
      * @throws EOFException if the stream ends inside the line
      */
     String readLine(int max, int tooLong) throws IOException, ParseError {
+        return readLine(max, tooLong, false);
+    }
+
+    /** Like {@link #readLine(int, int)}; with {@code crlfOnly} a bare LF is an error (chunked framing, RFC 9112 7.1). */
+    String readLine(int max, int tooLong, boolean crlfOnly) throws IOException, ParseError {
         int scanned = 0;
         while (true) {
             for (int i = pos + scanned; i < lim; i++) {
                 if (buf[i] == '\n') {
                     int end = i > pos && buf[i - 1] == '\r' ? i - 1 : i;
+                    if (crlfOnly && end == i) {
+                        throw new ParseError(400, "bare LF");
+                    }
                     if (end - pos > max) {
                         throw new ParseError(tooLong, "line too long");
                     }

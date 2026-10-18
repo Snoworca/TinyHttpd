@@ -26,8 +26,9 @@ final class FileTransfer {
     }
 
     static void send(ExchangeResponse res, FileChannel ch, long offset, long length) throws IOException {
-        if (res.isCommitted()) {
-            throw new IllegalStateException("response already committed");
+        if (res.isCommitted() || res.written > 0) {
+            // The file length becomes Content-Length, so bytes written before would break the framing.
+            throw new IllegalStateException("response already committed or written to");
         }
         if (offset < 0 || length < 0) {
             throw new IllegalArgumentException("negative offset or length");

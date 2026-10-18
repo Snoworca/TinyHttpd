@@ -113,12 +113,11 @@ public final class StaticFileHandler implements Handler {
         File file = resolve(req.getPath());
         if (file.isDirectory()) {
             if (!req.getPath().endsWith("/")) {
-                // Built from the normalized path: the raw URI may start with "//" (a protocol-relative open redirect).
-                StringBuilder location = new StringBuilder();
-                for (String seg : req.getPath().substring(1).split("/")) {
-                    location.append('/').append(PercentCodec.encode(seg));
-                }
-                location.append('/');
+                // Relative ("./name/"), so it also works under a Router mount, whose handler sees only the path below
+                // the mount. Built from the normalized last segment: never "//host" (an open redirect) nor a scheme.
+                String path = req.getPath();
+                StringBuilder location = new StringBuilder("./")
+                        .append(PercentCodec.encode(path.substring(path.lastIndexOf('/') + 1))).append('/');
                 if (req.getQueryString() != null) {
                     location.append('?').append(req.getQueryString());
                 }

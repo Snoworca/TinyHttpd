@@ -301,6 +301,11 @@ final class Connection {
             ioFailure(ex, res, e);
         } catch (RuntimeException e) {
             error(res, 500, null, null, e);
+        } catch (Error e) {
+            // A handler's Error (StackOverflowError, AssertionError) is answered like any failure; the connection
+            // closes because the handler may have left shared state half-updated.
+            mustClose = true;
+            error(res, 500, null, null, e);
         } finally {
             SseStream es = eventStream;
             if (es != null) {

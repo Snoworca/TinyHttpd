@@ -178,4 +178,12 @@ public class RouterTest {
         flipper.join(2000);
         assertTrue(bad.toString(), bad.isEmpty());
     }
+
+    @Test
+    public void mod06_mountKeepsTrailingSlash() throws IOException {
+        Router root = new Router().mount("/share", says("m"));
+        assertEquals("m {} /d/", send(root, "GET", "/share/d/").body);
+        assertEquals("m {} /d", send(root, "GET", "/share/d").body);
+        assertEquals("m {} /", send(root, "GET", "/share/").body);
+    }
 }

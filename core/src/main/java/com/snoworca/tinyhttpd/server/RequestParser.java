@@ -20,11 +20,12 @@ final class RequestParser {
         }
         parseRequestLine(line, ex);
         parseHeaders(in, ex, cfg);
-        if (ex.isHttp11()) {
-            int hosts = ex.getHeaders("Host").size();
-            if (hosts != 1) {
-                throw new ParseError(400, hosts == 0 ? "missing Host" : "several Host headers");
-            }
+        List<String> hosts = ex.getHeaders("Host");
+        if (hosts.size() > 1 || hosts.isEmpty() && ex.isHttp11()) {
+            throw new ParseError(400, hosts.isEmpty() ? "missing Host" : "several Host headers");
+        }
+        if (!hosts.isEmpty() && !validHost(hosts.get(0))) {
+            throw new ParseError(400, "invalid Host");
         }
         if (ex.path == null) {
             throw new ParseError(400, "invalid path");
@@ -102,6 +103,49 @@ final class RequestParser {
             throw new ParseError(505, "unsupported version");
         }
         ex.minor = v.charAt(7) == '0' ? 0 : 1;
+    }
+
+    /** RFC 9112 3.2: {@code uri-host [":" port]}, where uri-host is an IP-literal or a reg-name (RFC 3986 3.2.2). */
+    static boolean validHost(String h) {
+        int i = 0;
+        int n = h.length();
+        if (h.startsWith("[")) {
+            int close = h.indexOf(']');
+            if (close < 2) {
+                return false;
+            }
+            for (i = 1; i < close; i++) {
+                char c = h.charAt(i);
+                if (!(Ascii.isHexDigit(c) || c == ':' || c == '.')) {
+                    return false;
+                }
+            }
+            i = close + 1;
+        } else {
+            for (; i < n && h.charAt(i) != ':'; i++) {
+                char c = h.charAt(i);
+                if (c == '%') {
+                    if (i + 2 >= n || !Ascii.isHexDigit(h.charAt(i + 1)) || !Ascii.isHexDigit(h.charAt(i + 2))) {
+                        return false;
+                    }
+                    i += 2;
+                } else if (!(Ascii.isAlphaNum(c) || "-._~!$&'()*+,;=".indexOf(c) >= 0)) {
+                    return false;
+                }
+            }
+        }
+        if (i == n) {
+            return true;
+        }
+        if (h.charAt(i) != ':') {
+            return false;
+        }
+        for (i++; i < n; i++) {
+            if (h.charAt(i) < '0' || h.charAt(i) > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void parseHeaders(InputBuffer in, Exchange ex, ServerConfig cfg) throws IOException, ParseError {

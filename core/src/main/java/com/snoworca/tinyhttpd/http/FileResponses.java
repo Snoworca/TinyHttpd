@@ -201,6 +201,9 @@ public final class FileResponses {
         try {
             String a = spec.substring(0, dash).trim();
             String b = spec.substring(dash + 1).trim();
+            if (!digits(a) || !digits(b)) {
+                return null; // invalid syntax: ignore the header (RFC 9110 14.2)
+            }
             if (a.isEmpty()) {
                 if (b.isEmpty()) {
                     return null;
@@ -226,6 +229,16 @@ public final class FileResponses {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /** @return whether s is empty or only ASCII digits; parseLong alone would accept a sign */
+    private static boolean digits(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            if (s.charAt(i) < '0' || s.charAt(i) > '9') {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

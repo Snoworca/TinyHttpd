@@ -371,6 +371,9 @@ public final class WebSocket {
                         }
                         closeCode = payload.length >= 2 ? (payload[0] & 0xff) << 8 | payload[1] & 0xff
                                 : CloseCodes.NO_STATUS;
+                        if (payload.length >= 2 && !sendableCloseCode(closeCode)) {
+                            throw new Fail(CloseCodes.PROTOCOL_ERROR, "invalid close code " + closeCode);
+                        }
                         closeReason = payload.length > 2 ? decodeText(payload, 2) : "";
                         if (!closeSent) {
                             byte[] echo = payload.length >= 2 ? new byte[] {payload[0], payload[1]} : new byte[0];
@@ -412,6 +415,11 @@ public final class WebSocket {
         } else {
             listener.onBinary(this, payload);
         }
+    }
+
+    /** RFC 6455 7.4: 1004-1006 and 1015 are reserved, below 1000 and 1016-2999 unassigned or for extensions. */
+    private static boolean sendableCloseCode(int code) {
+        return code >= 1000 && code <= 1003 || code >= 1007 && code <= 1014 || code >= 3000 && code <= 4999;
     }
 
     private static String decodeText(byte[] b, int off) throws Fail {

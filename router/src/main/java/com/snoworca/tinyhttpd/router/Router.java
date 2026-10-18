@@ -230,6 +230,9 @@ public final class Router implements Handler {
             for (int i = best.segments.length; i < parts.length; i++) {
                 rest.append('/').append(parts[i]);
             }
+            if (rest.length() > 0 && path.endsWith("/")) {
+                rest.append('/'); // a directory request stays one below the mount
+            }
             final String sub = rest.length() == 0 ? "/" : rest.toString();
             best.handler.handle(new RequestWrapper(req) {
 

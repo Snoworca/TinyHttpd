@@ -39,7 +39,12 @@ final class WorkerPool {
             try {
                 Object[] job = take();
                 while (job != null) {
-                    server.runConnection((Socket) job[0], (ServerConfig.Listener) job[1], this);
+                    try {
+                        server.runConnection((Socket) job[0], (ServerConfig.Listener) job[1], this);
+                    } catch (Throwable t) {
+                        // Reaching afterConnection is what returns the slot; skipping it would leak one per failure.
+                        server.log.log(java.util.logging.Level.SEVERE, "connection failed", t);
+                    }
                     job = afterConnection(this);
                 }
             } finally {

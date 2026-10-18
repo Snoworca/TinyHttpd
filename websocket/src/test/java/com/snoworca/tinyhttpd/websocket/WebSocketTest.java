@@ -227,6 +227,32 @@ public class WebSocketTest {
         }
     }
 
+    /** RFC 6455 7.4: codes that must not appear on the wire are a protocol error, not echoed. */
+    @Test
+    public void mod15_invalidCloseCode() throws IOException {
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
+        for (int code : new int[] {999, 1004, 1005, 1006, 1015, 1016, 2999, 5000}) {
+            RawConnection c = rawOpen();
+            try {
+                c.send(frame(8, new byte[] {(byte) (code >> 8), (byte) code}, true, true));
+                Object[] f = readFrame(c);
+                assertEquals(8, f[0]);
+                assertEquals("code " + code, 1002, closeCode(f));
+            } finally {
+                c.close();
+            }
+        }
+        for (int code : new int[] {1000, 1001, 1003, 1007, 1011, 1014, 3000, 4999}) {
+            RawConnection c = rawOpen();
+            try {
+                c.send(frame(8, new byte[] {(byte) (code >> 8), (byte) code}, true, true));
+                assertEquals("code " + code, code, closeCode(readFrame(c)));
+            } finally {
+                c.close();
+            }
+        }
+    }
+
     @Test
     public void mod16_tooLargeMessage() throws Exception {
         start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
