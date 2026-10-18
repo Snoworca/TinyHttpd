@@ -9,7 +9,7 @@ import okhttp3.Connection;
 import okhttp3.EventListener;
 import okhttp3.OkHttpClient;
 
-/** OkHttp client helpers. */
+/** OkHttp client helpers. Clients accept https URLs from servers using the test certificate ({@link TestTls}). */
 public final class Clients {
 
     private Clients() {
@@ -35,7 +35,7 @@ public final class Clients {
     }
 
     public static OkHttpClient okHttp(boolean retryOnConnectionFailure, EventListener listener) {
-        OkHttpClient.Builder b = new OkHttpClient.Builder().readTimeout(10, TimeUnit.SECONDS)
+        OkHttpClient.Builder b = trustTestCertificate(new OkHttpClient.Builder()).readTimeout(10, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(retryOnConnectionFailure);
         if (listener != null) {
             b.eventListener(listener);
@@ -45,6 +45,11 @@ public final class Clients {
 
     public static OkHttpClient okHttp() {
         return okHttp(true, null);
+    }
+
+    /** Makes {@code b} trust the test certificate for https URLs. @return {@code b} */
+    public static OkHttpClient.Builder trustTestCertificate(OkHttpClient.Builder b) {
+        return b.sslSocketFactory(TestTls.socketFactory(), TestTls.serverTrust());
     }
 
     public static void shutdown(OkHttpClient client) {

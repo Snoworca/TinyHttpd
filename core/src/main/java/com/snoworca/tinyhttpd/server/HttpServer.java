@@ -133,7 +133,7 @@ public final class HttpServer {
             }
             for (ServerConfig.Listener l : config.listeners) {
                 if (l.tls != null) {
-                    Tls.validate(l.tls);
+                    Tls.validate(l.tls, log);
                 }
             }
             try {
@@ -364,7 +364,8 @@ public final class HttpServer {
                 writeTimeouts.incrementAndGet();
                 c.writeTimedOut = true;
                 c.abortSocket();
-            } else if (p == Connection.READING_HEADERS && now - c.phaseSince > config.headerTimeout + 2000L) {
+            } else if (p == Connection.READING_HEADERS && now - c.phaseSince > config.headerTimeout + 2000L
+                    || p == Connection.HANDSHAKING && now - c.phaseSince > c.listener.tls.getHandshakeTimeout() + 2000L) {
                 c.abortSocket();
             } else if (p == Connection.IDLE && underLoad && now - c.phaseSince > reducedIdle
                     && c.phase.compareAndSet(Connection.IDLE, Connection.CLOSING)) {
