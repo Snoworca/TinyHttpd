@@ -177,7 +177,8 @@ public class SseTest extends EngineTestBase {
             head(f);
         }
         String payload = repeat('d', 2000);
-        for (int i = 0; i < 300; i++) {
+        // Linux autotunes socket buffers to megabytes, so keep sending until the slow queue overflows.
+        for (int i = 0; i < 20000 && server.getStats().slowConsumerCloses == 0; i++) {
             hub.broadcast("e", payload, Integer.toString(i));
             for (RawConnection f : fast) {
                 assertTrue(chunk(f).contains("id: " + i + "\n"));

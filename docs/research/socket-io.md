@@ -12,7 +12,7 @@
 | 2b. 다른 스레드가 원본 평문 소켓을 닫으면 막힌 TLS `read`가 풀림 | 예. `SocketException: Socket closed` | 미확인 | `closingPlainSocketUnblocksTlsRead` |
 | 2c. 같은 조건에서 막힌 TLS `write`가 풀림 | 예. `SocketException: Socket closed` | 미확인 | `closingPlainSocketUnblocksTlsWrite` |
 | 3a. 다른 스레드의 `close()`가 막힌 평문 `write`를 깨움 | 예. `SocketException: Socket closed` | 미확인 | `closeUnblocksPlainWrite` |
-| 3b. 다른 스레드의 `close()`가 막힌 `FileChannel.transferTo`(→ `SocketChannel`)를 깨움 | 예. `ClosedChannelException` | 미확인 | `closeUnblocksTransferTo` |
+| 3b. 다른 스레드의 `close()`가 막힌 `FileChannel.transferTo`(→ `SocketChannel`)를 깨움 | 예. `ClosedChannelException`(macOS). Linux JDK 17(CI)은 2초 안에 깨지 않음 | 미확인 | `closeUnblocksTransferTo`(깨지 않으면 skip) |
 | 4. 전이중: 채널 소켓에서 한 스레드가 `read`에 막혀 있어도 다른 스레드의 adaptor `write`가 진행 | 예 | 미확인 (JDK 8은 `blockingLock` 공유로 막힌다고 알려짐) | `channelSocketIsFullDuplex` |
 
 - "막힘" 판정: 상대가 읽지 않고 수신 버퍼를 4 KB로 줄인 뒤 300 ms 동안 작업이 끝나지 않으면 막힌 것으로 본다. 닫은 뒤 2초 안에 스레드가 끝나야 통과다.
