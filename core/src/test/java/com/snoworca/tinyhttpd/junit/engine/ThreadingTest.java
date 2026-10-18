@@ -245,6 +245,35 @@ public class ThreadingTest extends EngineTestBase {
         }
     }
 
+    /** AUD-01: draining an unread body has a total deadline, so trickling bytes cannot hold the worker. */
+    @Test
+    public void aud01_slowDrainIsBounded() throws Exception {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().bodyReadTimeout(500));
+        final RawConnection c = new RawConnection(port, 0, tls ? TestTls.socketFactory() : null);
+        try {
+            c.send("POST /hello HTTP/1.1\r\nHost: x\r\nContent-Length: 1000\r\n\r\n");
+            Thread drip = new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    try {
+                        c.sendSlowly(new byte[1000], 1, 100);
+                    } catch (IOException closed) {
+                        // the server gave up
+                    }
+                }
+            });
+            drip.setDaemon(true);
+            drip.start();
+            assertEquals("hello", c.read().body);
+            long start = System.currentTimeMillis();
+            String state = c.awaitClose(4000);
+            assertTrue(state + " after " + (System.currentTimeMillis() - start) + " ms", !"open".equals(state));
+        } finally {
+            c.close();
+        }
+    }
+
     @Test
     public void th07_idleTimeout() throws IOException {
         start(com.snoworca.tinyhttpd.testing.TestServers.builder().idleTimeout(500));

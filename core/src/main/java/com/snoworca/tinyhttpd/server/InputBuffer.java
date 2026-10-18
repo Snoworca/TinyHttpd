@@ -80,7 +80,7 @@ final class InputBuffer {
                 }
             }
             scanned = lim - pos;
-            if (scanned > max + 1) {
+            if (scanned > max + 1 || scanned == buf.length) {
                 throw new ParseError(tooLong, "line too long");
             }
             if (fill() < 0) {

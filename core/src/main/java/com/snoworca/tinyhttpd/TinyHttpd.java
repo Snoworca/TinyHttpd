@@ -572,6 +572,9 @@ public final class TinyHttpd {
             positive("eventQueueEvents", eventQueueEvents);
             positive("eventQueueBytes", eventQueueBytes);
             nonNegative("maxUpgradedConnections", maxUpgradedConnections);
+            if (inputBufferBytes < maxChunkSizeLineBytes + 2) {
+                throw new IllegalArgumentException("inputBufferBytes must be >= maxChunkSizeLineBytes + 2");
+            }
             if (inputBufferBytes < maxRequestLineBytes + 2) {
                 throw new IllegalArgumentException("inputBufferBytes must be >= maxRequestLineBytes + 2");
             }

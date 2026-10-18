@@ -322,7 +322,7 @@ public final class WebSocket {
                     throw new Fail(CloseCodes.MESSAGE_TOO_BIG, "frame too large");
                 }
                 byte[] mask = readFully(new byte[4]);
-                byte[] payload = readFully(new byte[(int) len]);
+                byte[] payload = readPayload((int) len);
                 for (int i = 0; i < payload.length; i++) {
                     payload[i] ^= mask[i & 3];
                 }
@@ -431,6 +431,25 @@ public final class WebSocket {
             throw new EOFException("connection closed inside a frame");
         }
         return b;
+    }
+
+    /** Reads a payload, growing the buffer as bytes arrive: a declared length alone reserves no memory. */
+    private byte[] readPayload(int len) throws IOException {
+        if (len <= 64 * 1024) {
+            return readFully(new byte[len]);
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream(64 * 1024);
+        byte[] chunk = new byte[16 * 1024];
+        int left = len;
+        while (left > 0) {
+            int n = in.read(chunk, 0, Math.min(chunk.length, left));
+            if (n < 0) {
+                throw new EOFException("connection closed inside a frame");
+            }
+            out.write(chunk, 0, n);
+            left -= n;
+        }
+        return out.toByteArray();
     }
 
     private byte[] readFully(byte[] b) throws IOException {

@@ -5,7 +5,7 @@ public final class ServerStats {
 
     /** Connections accepted by the listener. */
     public final long acceptedConnections;
-    /** Connections currently open (current). */
+    /** Accepted connections not yet closed, including queued ones (current). */
     public final int openConnections;
     /** Accepted sockets waiting for a worker (current). */
     public final int queuedConnections;

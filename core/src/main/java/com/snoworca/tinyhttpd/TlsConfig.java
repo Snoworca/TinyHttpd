@@ -208,7 +208,7 @@ public final class TlsConfig {
         }
 
         /**
-         * @param trustManagers verify client certificates; null for the platform default
+         * @param trustManagers verify client certificates; required with {@link ClientAuth#WANT} or {@link ClientAuth#NEED}
          * @return this builder
          */
         public Builder trustManagers(TrustManager[] trustManagers) {
@@ -288,6 +288,10 @@ public final class TlsConfig {
         public TlsConfig build() {
             if (keyManagers == null) {
                 throw new IllegalStateException("TLS needs key material: keyStore(...) or keyManagers(...)");
+            }
+            if (clientAuth != ClientAuth.NONE && trustManagers == null) {
+                // the platform default trusts public CAs, so any publicly issued client certificate would pass
+                throw new IllegalStateException("client authentication needs trustManagers(...)");
             }
             try {
                 SSLContext ctx = SSLContext.getInstance("TLS");

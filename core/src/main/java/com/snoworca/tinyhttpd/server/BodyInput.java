@@ -117,10 +117,14 @@ abstract class BodyInput extends InputStream {
         if (r > max) {
             return false;
         }
-        byte[] scratch = in.buf.length > 0 ? new byte[(int) Math.min(4096, max + 1)] : null;
+        byte[] scratch = new byte[(int) Math.min(4096, max + 1)];
         long budget = max;
+        long deadline = System.currentTimeMillis() + conn.cfg.bodyReadTimeout;
         try {
             while (true) {
+                if (System.currentTimeMillis() > deadline) {
+                    return false; // a client trickling the rest of the body must not hold the worker
+                }
                 int n = read(scratch, 0, (int) Math.min(scratch.length, budget + 1));
                 if (n < 0) {
                     return true;

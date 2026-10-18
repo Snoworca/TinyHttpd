@@ -114,6 +114,28 @@ public class WebServerTest {
         assertEquals(403, send("GET", "/escape.txt", "").status());
     }
 
+    /** AUD-04: an index file that links outside the root is not served. */
+    @Test
+    public void aud04_indexSymlinkOutsideRoot() throws Exception {
+        File dir = new File(root, "linked");
+        dir.mkdir();
+        Process p = new ProcessBuilder("ln", "-s", outside.getAbsolutePath(), new File(dir, "index.html").getAbsolutePath())
+                .start();
+        assertEquals(0, p.waitFor());
+        start(new StaticFileHandler(root), null);
+        assertEquals(403, send("GET", "/linked/", "").status());
+    }
+
+    /** AUD-05: the directory redirect is built from the normalized path, never "//host". */
+    @Test
+    public void aud05_noProtocolRelativeRedirect() throws IOException {
+        new File(root, "evil.example").mkdir();
+        start(new StaticFileHandler(root), null);
+        RawResponse r = send("GET", "//evil.example", "");
+        assertEquals(302, r.status());
+        assertEquals("/evil.example/", r.header("location"));
+    }
+
     @Test
     public void mod09_listingEscapesNames() throws IOException {
         start(new StaticFileHandler(root).directoryListing(true), null);

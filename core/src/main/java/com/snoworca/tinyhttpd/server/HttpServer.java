@@ -83,6 +83,9 @@ public final class HttpServer {
 
     final AtomicInteger eventStreams = new AtomicInteger(), upgraded = new AtomicInteger();
 
+    /** Accepted sockets not yet closed, including ones queued or being handed to a worker. */
+    final AtomicInteger open = new AtomicInteger();
+
     private volatile int workersLeftAfterStop;
 
     /** Opens the listening socket; replaced in tests to simulate accept failures. */
@@ -217,6 +220,7 @@ public final class HttpServer {
                 continue;
             }
             accepted.incrementAndGet();
+            open.incrementAndGet();
             if (!acquireAddress(s.getInetAddress())) {
                 rejectedPerAddress.incrementAndGet();
                 reject(s, b.listener, false);
@@ -260,6 +264,7 @@ public final class HttpServer {
      * must not block on a handshake). The socket then lingers on the watchdog so the 503 is not reset.
      */
     void reject(Socket s, ServerConfig.Listener listener, boolean addressCounted) {
+        open.decrementAndGet();
         if (addressCounted) {
             releaseAddress(s.getInetAddress());
         }
@@ -277,6 +282,10 @@ public final class HttpServer {
             return;
         }
         synchronized (lingering) {
+            if (lingering.size() >= config.maxConnections) {
+                closeQuietly(s); // bounded: under a flood, lose the graceful 503 rather than memory and descriptors
+                return;
+            }
             lingering.add(new Lingering(s, System.currentTimeMillis() + config.lingerTimeout));
         }
     }
@@ -292,6 +301,7 @@ public final class HttpServer {
         } finally {
             registry.remove(c);
             releaseAddress(socket.getInetAddress());
+            open.decrementAndGet();
         }
     }
 
@@ -501,7 +511,7 @@ public final class HttpServer {
 
     /** @return a snapshot of the counters */
     public ServerStats getStats() {
-        return new ServerStats(accepted.get(), registry.size(), pool.queued(), busyWorkers(), pool.threadCount(),
+        return new ServerStats(accepted.get(), open.get(), pool.queued(), busyWorkers(), pool.threadCount(),
                 requests.get(), rejectedOverCapacity.get(), rejectedPerAddress.get(), idleTimeouts.get(),
                 headerTimeouts.get(), bodyReadTimeouts.get(), writeTimeouts.get(), evictions.get(),
                 workersLeftAfterStop, eventStreams.get(), slowConsumerCloses.get(), upgraded.get(), socketWrites.get());

@@ -241,6 +241,7 @@ final class WorkerPool {
             lock.notifyAll();
         }
         for (Queued q : dropped) {
+            server.open.decrementAndGet();
             server.releaseAddress(q.socket.getInetAddress());
             HttpServer.closeQuietly(q.socket);
         }

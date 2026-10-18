@@ -235,6 +235,17 @@ public class TlsTest extends EngineTestBase {
         }
     }
 
+    /** AUD-07: client authentication without explicit trust would accept any publicly issued certificate. */
+    @Test
+    public void aud07_clientAuthNeedsTrustManagers() {
+        try {
+            TestTls.server().clientAuth(TlsConfig.ClientAuth.WANT).build();
+            fail("built without trust managers");
+        } catch (IllegalStateException expected) {
+            // refused
+        }
+    }
+
     /** TLS-05: a client that never handshakes is closed after the handshake timeout. */
     @Test
     public void tls05_silentClientClosedAfterHandshakeTimeout() throws IOException {
@@ -408,6 +419,19 @@ public class TlsTest extends EngineTestBase {
         long deadline = System.currentTimeMillis() + 10000;
         while (server.getStats().openConnections > 0 && System.currentTimeMillis() < deadline) {
             sleep(20);
+        }
+        if (server.getStats().openConnections > 0) {
+            StringBuilder sb = new StringBuilder("TLS-12 diagnostic " + server.getStats() + "\n"); // only on failure
+            for (java.util.Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+                if (!e.getKey().getName().startsWith("tls12") && !e.getKey().getName().startsWith("tinyhttpd")) {
+                    continue;
+                }
+                sb.append(e.getKey().getName()).append(' ').append(e.getKey().getState()).append('\n');
+                for (StackTraceElement el : e.getValue()) {
+                    sb.append("   ").append(el).append('\n');
+                }
+            }
+            System.out.println(sb);
         }
         assertEquals(0, server.getStats().openConnections);
         assertTrue("log lines " + logged.size(), logged.size() <= connections);

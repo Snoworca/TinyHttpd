@@ -15,6 +15,7 @@ import com.snoworca.tinyhttpd.http.HttpException;
 import com.snoworca.tinyhttpd.http.MimeTypes;
 import com.snoworca.tinyhttpd.http.Request;
 import com.snoworca.tinyhttpd.http.Response;
+import com.snoworca.tinyhttpd.server.PercentCodec;
 
 /**
  * Serves files under a root directory with {@link FileResponses} (ranges, validators, nosniff). Directories use an
@@ -100,13 +101,22 @@ public final class StaticFileHandler implements Handler {
         File file = resolve(req.getPath());
         if (file.isDirectory()) {
             if (!req.getPath().endsWith("/")) {
-                res.sendRedirect(req.getRequestURI() + "/" + (req.getQueryString() != null ? "?" + req.getQueryString() : ""));
+                // Built from the normalized path: the raw URI may start with "//" (a protocol-relative open redirect).
+                StringBuilder location = new StringBuilder();
+                for (String seg : req.getPath().substring(1).split("/")) {
+                    location.append('/').append(PercentCodec.encode(seg));
+                }
+                location.append('/');
+                if (req.getQueryString() != null) {
+                    location.append('?').append(req.getQueryString());
+                }
+                res.sendRedirect(location.toString());
                 return;
             }
             File index = null;
             for (String name : indexFiles) {
                 File f = new File(file, name);
-                if (f.isFile()) {
+                if (f.isFile() && (followSymlinksOutsideRoot || insideRoot(f))) {
                     index = f;
                     break;
                 }
@@ -143,15 +153,16 @@ public final class StaticFileHandler implements Handler {
         FileResponses.serve(req, res, file, type);
     }
 
+    private boolean insideRoot(File f) throws IOException {
+        String c = f.getCanonicalFile().getPath();
+        return c.equals(rootPath) || c.startsWith(rootPath.endsWith(File.separator) ? rootPath : rootPath + File.separator);
+    }
+
     /** Maps a normalized request path to a file under the root, refusing escapes. */
     private File resolve(String path) throws IOException, HttpException {
         File f = new File(root, path);
-        File canonical = f.getCanonicalFile();
-        String c = canonical.getPath();
-        boolean inside = c.equals(rootPath) || c.startsWith(rootPath.endsWith(File.separator) ? rootPath
-                : rootPath + File.separator);
         // The path has no dot segments (rejected while parsing), so only a symbolic link can lead outside.
-        if (!inside && !followSymlinksOutsideRoot) {
+        if (!followSymlinksOutsideRoot && !insideRoot(f)) {
             throw new HttpException(403, "outside the root");
         }
         return f;

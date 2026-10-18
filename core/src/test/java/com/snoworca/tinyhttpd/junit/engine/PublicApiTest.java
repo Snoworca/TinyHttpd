@@ -130,6 +130,14 @@ public class PublicApiTest extends EngineTestBase {
             assertTrue(e.getMessage(), e.getMessage().contains("inputBufferBytes"));
         }
         try {
+            // AUD-02: a chunk size line longer than the input buffer could never complete
+            com.snoworca.tinyhttpd.testing.TestServers.builder().handler(router).inputBufferBytes(1024)
+                    .maxRequestLineBytes(1000).build();
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("maxChunkSizeLineBytes"));
+        }
+        try {
             com.snoworca.tinyhttpd.testing.TestServers.builder().handler(router).maxWorkers(0).build();
             fail();
         } catch (IllegalArgumentException e) {
