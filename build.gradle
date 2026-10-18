@@ -47,8 +47,23 @@ configure(subprojects.findAll { it.path in libraryProjects }) {
         testImplementation 'com.squareup.okhttp3:okhttp:4.12.0'
     }
 
+    // SEC-16: libraries ship with no runtime dependency except other TinyHttpd modules.
+    def checkDeps = tasks.register('checkRuntimeDependencies') {
+        doLast {
+            def external = configurations.runtimeClasspath.resolvedConfiguration.resolvedArtifacts.findAll {
+                !(it.id.componentIdentifier instanceof org.gradle.api.artifacts.component.ProjectComponentIdentifier)
+            }
+            if (!external.isEmpty()) {
+                throw new GradleException("SEC-16: external runtime dependencies in ${project.path}: ${external*.id}")
+            }
+        }
+    }
+    tasks.named('check').configure { dependsOn checkDeps }
+
     test {
         useJUnit()
+        // -Dfuzz.cases=10000 runs the full fuzz suites (P1-14, P9-05); CI uses the default 1,000.
+        systemProperties System.getProperties().findAll { it.key.toString().startsWith('fuzz.') }
     }
 }
 

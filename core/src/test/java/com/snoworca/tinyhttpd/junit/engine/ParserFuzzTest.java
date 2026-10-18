@@ -69,7 +69,7 @@ public class ParserFuzzTest extends EngineTestBase {
         Random random = new Random(seed);
         for (int i = 0; i < cases; i++) {
             byte[] input = mutate(BASES[random.nextInt(BASES.length)].getBytes("ISO-8859-1"), random);
-            String outcome = send(input);
+            String outcome = send(port, input);
             assertTrue("case " + i + " seed " + seed + " hung: " + escape(input), !"hung".equals(outcome));
         }
         long deadline = System.currentTimeMillis() + 5000;
@@ -80,8 +80,9 @@ public class ParserFuzzTest extends EngineTestBase {
         assertEquals(severe.toString(), 0, severe.size());
     }
 
-    private String send(byte[] input) throws IOException {
+    static String send(int port, byte[] input) throws IOException {
         Socket s = new Socket();
+        s.setSoLinger(true, 0); // close with a reset, not TIME_WAIT: 10,000-case runs would exhaust ephemeral ports
         try {
             s.connect(new InetSocketAddress("127.0.0.1", port), 2000);
             s.setSoTimeout(4000);
@@ -108,7 +109,7 @@ public class ParserFuzzTest extends EngineTestBase {
         }
     }
 
-    private static byte[] mutate(byte[] in, Random r) {
+    static byte[] mutate(byte[] in, Random r) {
         List<Byte> b = new ArrayList<Byte>();
         for (byte x : in) {
             b.add(x);
@@ -145,7 +146,7 @@ public class ParserFuzzTest extends EngineTestBase {
         return out;
     }
 
-    private static String escape(byte[] b) {
+    static String escape(byte[] b) {
         StringBuilder sb = new StringBuilder();
         for (byte x : b) {
             int c = x & 0xff;

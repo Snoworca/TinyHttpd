@@ -26,7 +26,7 @@
 | SEC-13 | 정보 노출: 스택 트레이스를 응답에 넣지 않는다. `Server` 헤더는 기본으로 끈다. 디렉터리 목록은 기본으로 끈다 | P2-04, P2-07, P8-02 | RS-13, SEC-T02 |
 | SEC-14 | **DNS rebinding**: `Host` 허용 목록 필터(`HostAllowlistFilter`, IP 리터럴은 기본 허용). 허용 목록에 없는 `Host`는 421. NAS 앱 가이드에서 사용을 권장한다 | P4-12, P12-04 | API-20, API-21 |
 | SEC-15 | CSRF: 상태를 바꾸는 요청에 `Origin`/`Referer` 검사 또는 토큰. session 모듈의 선택 `CsrfFilter`. DNS rebinding은 SEC-14에 의존 | P8-04 | MOD-25 |
-| SEC-16 | 의존성: core 런타임 의존성 0개 유지. 다른 모듈의 런타임 의존성은 core뿐이다(servlet 어댑터 제외) | 빌드 | `./gradlew :tinyhttpd-core:dependencies` 검사 |
+| SEC-16 | 의존성: core 런타임 의존성 0개 유지. 다른 모듈의 런타임 의존성은 core뿐이다(servlet 어댑터 제외) | 빌드 | `checkRuntimeDependencies`(`check`에 연결) |
 | SEC-17 | 퍼징: 요청 파서, chunked, multipart, WebSocket 프레임 | P1-14, P9-05 | SEC-T03 |
 | SEC-18 | 코드 출처: 라이선스가 불분명한 코드(예: 구 `NanoWSD.encodeBase64`의 Stack Overflow 코드)를 옮겨 오지 않는다 | P4-13 | API-22 |
 | SEC-19 | 사용자가 올린 파일의 저장형 XSS: `nosniff` 상시, 신뢰하지 않는 루트는 HTML/SVG를 `attachment` + `CSP: sandbox`로 | P5-06, P8-02 | MOD-30 |
@@ -65,7 +65,7 @@
 - 산출물: `docs/research/security-audit.md`(날짜, 커밋, 항목별 결과, 발견 사항과 처리).
 - 완료 조건: 모든 항목이 "충족" 또는 "수용(이유)"이다.
 
-## P9-04 보안 유틸의 위치 `[ ]`
+## P9-04 보안 유틸의 위치 `[x]` (2026-10-18)
 - 보안 유틸은 그것을 쓰는 단계에서 만든다. 이 작업은 위치를 추적만 한다.
   - `Html.escape` → P4-11
   - `HostAllowlistFilter` → P4-12
@@ -73,7 +73,7 @@
   - `CsrfFilter` → P8-04
 - 완료 조건: 위 작업들이 끝났다.
 
-## P9-05 퍼징 확장 `[ ]`
+## P9-05 퍼징 확장 `[x]` (2026-10-18: `BodyFuzzTest`, `WebSocketFuzzTest`, `-Dfuzz.cases=10000`에서 각 1만 건 통과)
 - P1-14의 무작위 변형 테스트를 chunked 바디, multipart 바디, WebSocket 프레임으로 넓힌다.
 - 검사 항목은 같다: 미처리 예외 없음, 회전 없음, 힙 증가가 상한 이내.
 - 완료 조건: SEC-T03(각 대상 1만 건, CI는 1천 건) 통과.
