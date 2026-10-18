@@ -232,6 +232,18 @@ public class SseTest extends EngineTestBase {
     }
 
     @Test
+    public void sse_responseAnnouncesClose() throws Exception {
+        streamRoute(60000);
+        start();
+        RawConnection c = openStream("");
+        try {
+            assertEquals("close", head(c).header("connection")); // the stream always ends the connection
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
     public void sse08_limitChangedWhileRunning() throws Exception {
         streamRoute(60000);
         start();

@@ -268,14 +268,13 @@ public final class HttpServer {
         if (addressCounted) {
             releaseAddress(s.getInetAddress());
         }
-        if (listener.tls != null) {
-            closeQuietly(s);
-            return;
-        }
         try {
-            OutputStream out = s.getOutputStream();
-            out.write(ErrorResponses.serviceUnavailable());
-            socketWrites.incrementAndGet();
+            if (listener.tls == null) {
+                OutputStream out = s.getOutputStream();
+                out.write(ErrorResponses.serviceUnavailable());
+                socketWrites.incrementAndGet();
+            }
+            // TLS: no handshake, so no 503; still FIN and drain, or the unread ClientHello turns the close into a reset.
             s.shutdownOutput();
         } catch (IOException e) {
             closeQuietly(s);
@@ -317,13 +316,13 @@ public final class HttpServer {
             // that request without an answer. A connection idle only briefly is likely between requests of a burst,
             // so closing it would race the next request; the watchdog retries once it has idled long enough.
             if (c.phase.get() == Connection.IDLE && c.requestCount > 0 && now - c.phaseSince >= MIN_EVICTABLE_IDLE_MS
-                    && (oldest == null || c.phaseSince < oldest.phaseSince)) {
+                    && (oldest == null || c.phaseSince < oldest.phaseSince) && !c.hasPendingInput()) {
                 oldest = c;
             }
         }
         if (oldest != null && oldest.phase.compareAndSet(Connection.IDLE, Connection.CLOSING)) {
             evictions.incrementAndGet();
-            oldest.abortSocket();
+            oldest.closeIdle();
             return true;
         }
         return false;
@@ -388,7 +387,9 @@ public final class HttpServer {
             } else if (p == Connection.IDLE && underLoad && now - c.phaseSince > reducedIdle
                     && c.phase.compareAndSet(Connection.IDLE, Connection.CLOSING)) {
                 idleTimeouts.incrementAndGet();
-                c.abortSocket();
+                c.closeIdle();
+            } else {
+                c.closeIfGraceOver(now);
             }
         }
         // Adaptive idle timeout with hysteresis: above 75% busy shorten, below 60% restore.
@@ -404,7 +405,7 @@ public final class HttpServer {
         synchronized (lingering) {
             for (Iterator<Lingering> it = lingering.iterator(); it.hasNext();) {
                 Lingering l = it.next();
-                if (now >= l.deadline || !l.discardAvailable()) {
+                if (!l.discardAvailable() || now >= l.deadline) { // drain once more before the deadline close
                     closeQuietly(l.socket);
                     it.remove();
                 }
@@ -469,9 +470,12 @@ public final class HttpServer {
         }
         while (!registry.isEmpty() && System.currentTimeMillis() < deadline) {
             sleepQuietly(10);
+            long now = System.currentTimeMillis();
             for (Connection c : registry) {
                 if (c.phase.get() == Connection.IDLE) {
                     c.onServerStopping();
+                } else {
+                    c.closeIfGraceOver(now);
                 }
             }
         }

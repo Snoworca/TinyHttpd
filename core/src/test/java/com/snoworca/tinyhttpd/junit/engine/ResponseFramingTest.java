@@ -234,6 +234,34 @@ public class ResponseFramingTest extends EngineTestBase {
     }
 
     @Test
+    public void rs16_http10CloseWinsOverKeepAlive() throws IOException {
+        start();
+        RawConnection c = connect();
+        try {
+            c.send("GET /ok HTTP/1.0\r\nConnection: keep-alive, close\r\n\r\n");
+            RawResponse r = c.read();
+            assertEquals(200, r.status());
+            assertEquals("close", r.header("connection"));
+            assertNull(r.header("keep-alive"));
+            assertEquals("closed", c.awaitClose(3000));
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
+    public void rs16_http10KeepAliveAdvertisesAtLeastOneSecond() throws IOException {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().idleTimeout(500));
+        RawConnection c = connect();
+        try {
+            c.send("GET /ok HTTP/1.0\r\nConnection: keep-alive\r\n\r\n");
+            assertEquals("timeout=1", c.read().header("keep-alive")); // 500 ms rounds down to 0, which means "close now"
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
     public void rs07_headKnownLength() throws IOException {
         start();
         RawConnection c = connect();

@@ -163,6 +163,117 @@ public class ThreadingTest extends EngineTestBase {
     }
 
     @Test
+    public void th03_evictedConnectionGetsCleanClose() throws Exception {
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(2));
+        RawConnection idle = connect();
+        RawConnection next = null;
+        try {
+            idle.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertEquals(200, idle.read().status());
+            Thread.sleep(400); // past the minimum idle age for eviction
+            next = connect();
+            next.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertEquals(200, next.read().status());
+            assertEquals(1, server.getStats().evictions);
+            // FIN (and close_notify over TLS), not a reset: the read ends normally.
+            idle.setReadTimeout(3000);
+            assertEquals(-1, idle.input().read());
+        } finally {
+            idle.close();
+            if (next != null) {
+                next.close();
+            }
+        }
+    }
+
+    @Test
+    public void th03_evictedTlsConnectionSendsCloseNotify() throws Exception {
+        org.junit.Assume.assumeTrue(tls);
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(2));
+        // Counts the server's bytes on the wire: a close_notify is one more TLS record after the response.
+        final java.util.concurrent.atomic.AtomicLong fromServer = new java.util.concurrent.atomic.AtomicLong();
+        final java.net.ServerSocket proxy = new java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress());
+        Thread pump = new Thread(() -> {
+            try (java.net.Socket down = proxy.accept();
+                    java.net.Socket up = new java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port)) {
+                Thread back = new Thread(() -> copy(up, down, fromServer));
+                back.setDaemon(true);
+                back.start();
+                copy(down, up, new java.util.concurrent.atomic.AtomicLong());
+                back.join(5000);
+            } catch (Exception ignored) {
+                // test ends
+            }
+        });
+        pump.setDaemon(true);
+        pump.start();
+        RawConnection idle = new RawConnection(proxy.getLocalPort(), 0, TestTls.socketFactory());
+        RawConnection next = null;
+        try {
+            idle.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertEquals(200, idle.read().status());
+            Thread.sleep(400);
+            long afterResponse = fromServer.get();
+            next = connect();
+            next.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertEquals(200, next.read().status());
+            idle.setReadTimeout(3000);
+            assertEquals(-1, idle.input().read());
+            assertTrue("no close_notify after the response", fromServer.get() > afterResponse);
+        } finally {
+            idle.close();
+            if (next != null) {
+                next.close();
+            }
+            proxy.close();
+        }
+    }
+
+    private static void copy(java.net.Socket from, java.net.Socket to, java.util.concurrent.atomic.AtomicLong count) {
+        byte[] buf = new byte[8192];
+        try {
+            int n;
+            while ((n = from.getInputStream().read(buf)) > 0) {
+                count.addAndGet(n);
+                to.getOutputStream().write(buf, 0, n);
+            }
+            to.shutdownOutput();
+        } catch (IOException ignored) {
+            // closed
+        }
+    }
+
+    @Test
+    public void th10_queuedConnectionGets503OnStop() throws Exception {
+        org.junit.Assume.assumeFalse(tls); // a queued TLS client blocks in its handshake constructor
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(2)
+                .queueWaitTimeout(30000));
+        RawConnection busy = connect();
+        RawConnection queued = null;
+        try {
+            busy.send("GET /block HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertTrue(entered.await(2, TimeUnit.SECONDS));
+            queued = connect();
+            queued.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+            long deadline = System.currentTimeMillis() + 2000;
+            while (server.getStats().queuedConnections < 1 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            Thread stopper = new Thread(() -> server.stop(300));
+            stopper.start();
+            assertEquals(503, queued.read().status()); // not a bare close
+            release.countDown();
+            stopper.join(5000);
+        } finally {
+            release.countDown();
+            busy.close();
+            if (queued != null) {
+                queued.close();
+            }
+        }
+    }
+
+    @Test
     public void th03_freshConnectionIsNotEvicted() throws Exception {
         org.junit.Assume.assumeFalse(tls); // a queued TLS client blocks in its handshake constructor
         start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(2));

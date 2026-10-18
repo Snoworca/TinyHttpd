@@ -75,7 +75,8 @@ final class Exchange implements Request {
     /** @return true if the client asked to keep the connection (RFC 9112 §9.3) */
     boolean wantsKeepAlive() {
         List<String> c = getHeaders("Connection");
-        return isHttp11() ? !Ascii.hasToken(c, "close") : Ascii.hasToken(c, "keep-alive");
+        // "close" wins in every version; HTTP/1.0 persists only when asked (RFC 9112 9.3).
+        return !Ascii.hasToken(c, "close") && (isHttp11() || Ascii.hasToken(c, "keep-alive"));
     }
 
     /** False while a 100-continue request waits for an interim response that was never sent. */

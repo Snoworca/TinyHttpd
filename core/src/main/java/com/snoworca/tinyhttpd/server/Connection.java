@@ -76,8 +76,17 @@ final class Connection {
 
     volatile int requestCount;
 
+    /** When another thread closed this idle connection (0 if not); see {@link #closeIdle()}. */
+    volatile long closeRequestedAt;
+
+    /** How long the worker of a closed idle connection may take to wake and close before the socket is aborted. */
+    static final long CLOSE_GRACE_MS = 200;
+
     /** The connection must close after the current response. */
     boolean mustClose;
+
+    /** The last response is close-delimited: the client waits for EOF before it closes. */
+    private boolean endsByClose;
 
     Connection(HttpServer server, Socket raw, ServerConfig.Listener listener, WorkerPool.Worker worker) {
         this.server = server;
@@ -139,7 +148,10 @@ final class Connection {
                 }
             }
             if (!phase.compareAndSet(IDLE, READING_HEADERS)) {
-                return; // evicted or stopping: the request was not processed, the client retries
+                // Closed while idle (closeIdle): the request that raced the close is not processed, the client
+                // retries it. Send FIN (and close_notify) and read the request away so closing sends no reset.
+                lingerClose();
+                return;
             }
             long now = System.currentTimeMillis();
             phaseSince = now;
@@ -169,8 +181,16 @@ final class Connection {
             ExchangeResponse res = new ExchangeResponse(this, ex);
             try {
                 dispatch(ex, res);
-                if (upgraded != null || eventStream != null) {
+                if (upgraded != null) {
                     mustClose = true;
+                    return;
+                }
+                if (eventStream != null) {
+                    // The stream ends the connection (announced at commit); close it like any response.
+                    if (!res.broken) {
+                        endsByClose = res.closeDelimited;
+                        lingerClose();
+                    }
                     return;
                 }
                 setPhase(DRAINING);
@@ -182,6 +202,7 @@ final class Connection {
             }
             if (!res.keepAlive || mustClose || server.isStopping()) {
                 if (!res.broken) {
+                    endsByClose = res.closeDelimited;
                     lingerClose();
                 }
                 return;
@@ -338,6 +359,7 @@ final class Connection {
     boolean persistentAtCommit(ExchangeResponse res) {
         Exchange ex = res.ex;
         if (!ex.wantsKeepAlive() || res.closeRequested || res.closeDelimited || mustClose || server.isStopping()
+                || eventStream != null
                 || requestCount >= cfg.maxRequestsPerConnection) {
             return false;
         }
@@ -370,7 +392,11 @@ final class Connection {
         deadline = System.currentTimeMillis() + cfg.getLingerTimeout();
         try {
             if (isSecure()) {
-                Tls.closeOutbound(this);
+                if (!Tls.closeOutbound(this) && endsByClose) {
+                    // No half-close (Conscrypt): the client waits for our EOF, so draining would only add
+                    // lingerTimeout. A close-delimited response leaves no request bytes behind to cause a reset.
+                    return;
+                }
             } else {
                 socket.shutdownOutput();
             }
@@ -396,9 +422,53 @@ final class Connection {
         HttpServer.closeQuietly(raw);
     }
 
+    /**
+     * Server-initiated close of an IDLE connection from another thread, after winning the IDLE to CLOSING CAS
+     * (RFC 9112 9.6). Never blocks: this thread writes nothing.
+     * <ul>
+     * <li>Input already arrived: the worker wakes with it and closes gracefully ({@link #lingerClose}); a plain close
+     * here would answer the unread bytes with a reset.</li>
+     * <li>Nothing received, plain: closing sends a FIN.</li>
+     * <li>Nothing received, TLS: shutting down input wakes the worker, whose close sends close_notify (RFC 9112 9.8).</li>
+     * </ul>
+     * {@link #closeIfGraceOver} aborts the socket if the worker does not finish.
+     */
+    void closeIdle() {
+        closeRequestedAt = System.currentTimeMillis();
+        if (hasPendingInput()) {
+            return;
+        }
+        if (socket == raw) {
+            abortSocket();
+            return;
+        }
+        try {
+            raw.shutdownInput();
+        } catch (IOException e) {
+            abortSocket();
+        }
+    }
+
+    /** @return whether bytes wait in the socket receive buffer; never blocks */
+    boolean hasPendingInput() {
+        try {
+            return raw.getInputStream().available() > 0;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    /** Aborts a connection closed by {@link #closeIdle} whose worker did not finish within {@link #CLOSE_GRACE_MS}. */
+    void closeIfGraceOver(long now) {
+        long at = closeRequestedAt;
+        if (at != 0 && now - at >= CLOSE_GRACE_MS + cfg.getLingerTimeout()) {
+            abortSocket();
+        }
+    }
+
     void onServerStopping() {
         if (phase.get() == IDLE && phase.compareAndSet(IDLE, CLOSING)) {
-            abortSocket();
+            closeIdle();
             return;
         }
         SseStream es = eventStream;

@@ -76,12 +76,14 @@ final class Tls {
      * now so a client reading to EOF is not kept waiting. Android's {@code SSLSocket} has no {@code shutdownOutput},
      * so there close_notify waits for {@code close()} (docs/research/tls.md).
      */
-    static void closeOutbound(Connection c) throws IOException {
+    /** @return false when the TLS socket cannot half-close (Conscrypt): close_notify then goes out on close() */
+    static boolean closeOutbound(Connection c) throws IOException {
         c.flushSocket();
         try {
             c.socket.shutdownOutput();
+            return true;
         } catch (UnsupportedOperationException e) {
-            // Conscrypt: drain first, close_notify on close()
+            return false;
         }
     }
 
