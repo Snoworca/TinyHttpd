@@ -1,25 +1,89 @@
+plugins {
+    id 'ru.vyarus.animalsniffer' version '2.0.1' apply false
+}
+
 allprojects {
-	apply plugin: 'java'
-	apply plugin: 'idea'
-	
-	group = 'org.nanohttpd'
-	version = '2.3.2-SNAPSHOT'
+    group = 'com.snoworca.tinyhttpd'
+    version = '0.1.0-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
 }
 
 subprojects {
-	apply plugin: 'java'
-	sourceCompatibility = 1.7
-	targetCompatibility = 1.7
-	
-	repositories {
-		jcenter()
-	}
-	
-	dependencies {
-		testCompile group: 'junit', name: 'junit', version: '4.12'
-	}
+    apply plugin: 'java-library'
+    apply plugin: 'ru.vyarus.animalsniffer'
+
+    // Java 8 language level, compiled with --release so only Java 8 class library APIs resolve.
+    tasks.withType(JavaCompile).configureEach {
+        options.release = 8
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ['-Xlint:-options']
+    }
+
+    // Android 5.0 (API 21) is the minimum runtime: fail the build on any API that API 21 lacks.
+    animalsniffer {
+        sourceSets = [sourceSets.main]
+    }
+
+    dependencies {
+        signature 'net.sf.androidscents.signature:android-api-level-21:5.0.1_r2@signature'
+
+        testImplementation 'junit:junit:4.13.2'
+        testImplementation 'com.squareup.okhttp3:okhttp:4.12.0'
+    }
+
+    test {
+        useJUnit()
+    }
 }
 
-task wrapper(type: Wrapper) {
-	gradleVersion = "4.4.1"
+project(':tinyhttpd-core') {
+    dependencies {
+        testImplementation 'org.apache.httpcomponents:httpclient:4.2.5'
+        testImplementation 'org.apache.httpcomponents:httpmime:4.2.5'
+    }
+
+    // Tests tagged KnownDefect describe intended behavior that the inherited code does not have yet.
+    def knownDefect = 'com.snoworca.tinyhttpd.junit.KnownDefect'
+
+    test {
+        useJUnit {
+            excludeCategories knownDefect
+        }
+    }
+
+    tasks.register('knownDefectTest', Test) {
+        description = 'Runs tests for known defects; failures are expected until each defect is fixed.'
+        group = 'verification'
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+        useJUnit {
+            includeCategories knownDefect
+        }
+        ignoreFailures = true
+    }
+}
+
+project(':tinyhttpd-webserver') {
+    dependencies {
+        api project(':tinyhttpd-core')
+        testImplementation 'org.apache.httpcomponents:httpclient:4.4.1'
+    }
+}
+
+project(':tinyhttpd-websocket') {
+    dependencies {
+        api project(':tinyhttpd-core')
+        testImplementation 'org.mockito:mockito-core:4.11.0'
+        testImplementation 'org.eclipse.jetty.websocket:websocket-client:9.3.0.M2'
+    }
+}
+
+project(':tinyhttpd-router') {
+    dependencies {
+        api project(':tinyhttpd-core')
+        testImplementation 'org.apache.httpcomponents:httpclient:4.4.1'
+    }
 }
