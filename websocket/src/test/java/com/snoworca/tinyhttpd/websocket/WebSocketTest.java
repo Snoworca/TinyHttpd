@@ -274,6 +274,27 @@ public class WebSocketTest {
     }
 
     @Test
+    public void mod19_upgradeLimitChangedWhileRunning() throws IOException {
+        start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder());
+        server.setMaxUpgradedConnections(1);
+        RawConnection a = rawOpen();
+        RawConnection b = new RawConnection(port);
+        RawConnection c = null;
+        try {
+            b.send(HANDSHAKE + "\r\n");
+            assertEquals(503, b.read().status());
+            server.setMaxUpgradedConnections(2);
+            c = rawOpen();
+        } finally {
+            a.close();
+            b.close();
+            if (c != null) {
+                c.close();
+            }
+        }
+    }
+
+    @Test
     public void mod19_upgradeLimit() throws IOException {
         start(echoHandler(), com.snoworca.tinyhttpd.testing.TestServers.builder().maxUpgradedConnections(1));
         RawConnection a = rawOpen();

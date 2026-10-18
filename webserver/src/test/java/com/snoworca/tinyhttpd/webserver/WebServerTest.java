@@ -7,6 +7,10 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.After;
 import org.junit.Before;
@@ -208,5 +212,88 @@ public class WebServerTest {
         assertEquals(403, send("GET", "/hello.txt", "").status());
         h.maxFileBytes(-1);
         assertEquals(200, send("GET", "/hello.txt", "").status());
+    }
+
+    @Test
+    public void settingsRevertWhileServing() throws IOException {
+        StaticFileHandler h = new StaticFileHandler(root).directoryListing(true).untrustedContent(true);
+        start(h, null);
+        assertEquals(200, send("GET", "/docs/", "").status());
+        h.directoryListing(false);
+        assertEquals(403, send("GET", "/docs/", "").status());
+        h.untrustedContent(false);
+        RawResponse r = send("GET", "/page.html", "");
+        assertNull(r.header("content-security-policy"));
+        assertNull(r.header("content-disposition"));
+    }
+
+    @Test
+    public void maxFileBytesBoundaryAndEveryPath() throws IOException {
+        StaticFileHandler h = new StaticFileHandler(root).maxFileBytes(11); // hello.txt is 11 bytes
+        start(h, null);
+        assertEquals("hello world", send("GET", "/hello.txt", "").body);
+        h.maxFileBytes(10);
+        assertEquals(403, send("GET", "/hello.txt", "").status());
+        assertEquals(403, send("HEAD", "/hello.txt", "").status());
+        assertEquals(403, send("GET", "/hello.txt", "Range: bytes=0-1\r\n").status());
+        assertEquals(200, send("GET", "/site/", "").status()); // index.html is 5 bytes
+        h.maxFileBytes(4);
+        assertEquals(403, send("GET", "/site/", "").status());
+        h.plugin(new UpperCasePlugin());
+        assertEquals(403, send("GET", "/note.up", "").status());
+        h.maxFileBytes(0);
+        assertEquals(403, send("GET", "/note.up", "").status());
+        h.maxFileBytes(-1);
+        assertEquals(206, send("GET", "/hello.txt", "Range: bytes=0-1\r\n").status());
+    }
+
+    @Test
+    public void pluginAddedWhileServing() throws IOException {
+        StaticFileHandler h = new StaticFileHandler(root);
+        start(h, null);
+        assertEquals("shout", send("GET", "/note.up", "").body);
+        h.plugin(new UpperCasePlugin());
+        assertEquals("SHOUT", send("GET", "/note.up", "").body);
+    }
+
+    @Test
+    public void settingsFlippedUnderTraffic() throws Exception {
+        final StaticFileHandler h = new StaticFileHandler(root);
+        start(h, null);
+        final AtomicBoolean stop = new AtomicBoolean();
+        final List<String> bad = new CopyOnWriteArrayList<String>();
+        Thread flipper = new Thread(() -> {
+            boolean on = false;
+            while (!stop.get()) {
+                on = !on;
+                h.directoryListing(on).untrustedContent(on).maxFileBytes(on ? 5 : -1);
+            }
+        });
+        flipper.start();
+        List<Thread> clients = new ArrayList<Thread>();
+        for (int t = 0; t < 4; t++) {
+            Thread c = new Thread(() -> {
+                try {
+                    for (int i = 0; i < 100; i++) {
+                        RawResponse f = send("GET", "/hello.txt", "");
+                        int d = send("GET", "/docs/", "").status();
+                        boolean fileOk = f.status() == 200 && "hello world".equals(f.body) || f.status() == 403;
+                        if (!fileOk || d != 200 && d != 403) {
+                            bad.add(f.status() + "/" + d);
+                        }
+                    }
+                } catch (IOException e) {
+                    bad.add(e.toString());
+                }
+            });
+            c.start();
+            clients.add(c);
+        }
+        for (Thread c : clients) {
+            c.join(20000);
+        }
+        stop.set(true);
+        flipper.join(2000);
+        assertTrue(bad.toString(), bad.isEmpty());
     }
 }

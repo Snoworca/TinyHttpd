@@ -232,6 +232,47 @@ public class SseTest extends EngineTestBase {
     }
 
     @Test
+    public void sse08_limitChangedWhileRunning() throws Exception {
+        streamRoute(60000);
+        start();
+        server.setMaxEventStreams(1);
+        RawConnection first = openStream("");
+        RawConnection second = null;
+        RawConnection third = null;
+        try {
+            head(first);
+            second = openStream("");
+            assertEquals(503, second.read().status());
+            server.setMaxEventStreams(2);
+            third = openStream("");
+            assertEquals(200, head(third).status());
+            // Lowering below the open count keeps the open streams and refuses new ones.
+            server.setMaxEventStreams(0);
+            long deadline = System.currentTimeMillis() + 2000;
+            while (hub.size() < 2 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(10);
+            }
+            hub.broadcast("e", "still", "1");
+            assertTrue(chunk(first).contains("still"));
+            assertTrue(chunk(third).contains("still"));
+            RawConnection fourth = openStream("");
+            try {
+                assertEquals(503, fourth.read().status());
+            } finally {
+                fourth.close();
+            }
+        } finally {
+            first.close();
+            if (second != null) {
+                second.close();
+            }
+            if (third != null) {
+                third.close();
+            }
+        }
+    }
+
+    @Test
     public void sse08_sse09_limitAndHead() throws Exception {
         streamRoute(60000);
         start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxEventStreams(1));

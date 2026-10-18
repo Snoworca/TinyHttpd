@@ -122,9 +122,10 @@ final class WorkerPool {
         }
     }
 
-    /** Starts queued connections the raised limit now allows. */
+    /** Starts queued connections a raised limit allows; wakes idle workers so a lowered limit retires them. */
     void limitsChanged() {
         synchronized (lock) {
+            lock.notifyAll();
             Queued q;
             while (!stopping && active < server.config.getMaxWorkers() && (q = queue.poll()) != null) {
                 active++;
@@ -173,7 +174,8 @@ final class WorkerPool {
             }
             idle.addLast(w);
             long deadline = System.currentTimeMillis() + server.config.getWorkerKeepAlive();
-            while (w.next == null && !stopping) {
+            // An idle worker above a lowered limit exits now instead of after workerKeepAlive.
+            while (w.next == null && !stopping && active + idle.size() <= server.config.getMaxWorkers()) {
                 long left = deadline - System.currentTimeMillis();
                 if (left <= 0) {
                     break;

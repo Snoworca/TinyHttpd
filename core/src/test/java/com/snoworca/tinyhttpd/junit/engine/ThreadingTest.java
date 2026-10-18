@@ -1,6 +1,7 @@
 package com.snoworca.tinyhttpd.junit.engine;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -13,7 +14,9 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -21,6 +24,7 @@ import javax.net.ssl.HttpsURLConnection;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.snoworca.tinyhttpd.ServerConfig;
 import com.snoworca.tinyhttpd.ServerStats;
 import com.snoworca.tinyhttpd.TinyHttpd;
 import com.snoworca.tinyhttpd.http.Handler;
@@ -177,6 +181,233 @@ public class ThreadingTest extends EngineTestBase {
         } finally {
             closeAll(idle);
         }
+    }
+
+    @Test
+    public void runtimeSettersValidateAndApply() throws Exception {
+        start();
+        String[] positive = {"HeaderTimeout", "BodyReadTimeout", "WriteTimeout", "IdleTimeout", "IdleTimeoutUnderLoad",
+            "QueueWaitTimeout", "WorkerKeepAlive"};
+        String[] nonNegative = {"LingerTimeout", "ShutdownGrace", "MaxEventStreams", "MaxUpgradedConnections"};
+        for (String name : positive) {
+            assertRejected(name, 0);
+            assertRejected(name, -1);
+            assertApplied(name, 1234);
+        }
+        for (String name : nonNegative) {
+            assertRejected(name, -1);
+            assertApplied(name, 0);
+            assertApplied(name, 7);
+        }
+        for (int[] bad : new int[][] {{0, 1}, {-1, 4}, {5, 4}}) {
+            try {
+                server.setWorkerLimits(bad[0], bad[1]);
+                fail("accepted " + bad[0] + "," + bad[1]);
+            } catch (IllegalArgumentException expected) {
+                // unchanged below
+            }
+        }
+        assertEquals(64, server.getConfig().getMaxWorkers());
+        assertEquals(128, server.getConfig().getMaxConnections());
+        server.setWorkerLimits(3, 3);
+        assertEquals(3, server.getConfig().getMaxWorkers());
+        assertEquals(3, server.getConfig().getMaxConnections());
+    }
+
+    private void assertRejected(String name, int value) throws Exception {
+        int before = (Integer) ServerConfig.class.getMethod("get" + name).invoke(server.getConfig());
+        try {
+            TinyHttpd.class.getMethod("set" + name, int.class).invoke(server, value);
+            fail(name + " accepted " + value);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            assertTrue(name, e.getCause() instanceof IllegalArgumentException);
+        }
+        assertEquals(name, before, ServerConfig.class.getMethod("get" + name).invoke(server.getConfig()));
+    }
+
+    private void assertApplied(String name, int value) throws Exception {
+        TinyHttpd.class.getMethod("set" + name, int.class).invoke(server, value);
+        assertEquals(name, value, ServerConfig.class.getMethod("get" + name).invoke(server.getConfig()));
+    }
+
+    @Test
+    public void th04_idleTimeoutChangedWhileRunning() throws Exception {
+        start();
+        server.setIdleTimeout(1000);
+        RawConnection c = connect();
+        try {
+            long start = System.currentTimeMillis();
+            // HTTP/1.0 keep-alive advertises the idle timeout, so the header shows the new value too.
+            c.send("GET /hello HTTP/1.0\r\nHost: x\r\nConnection: keep-alive\r\n\r\n");
+            RawResponse r = c.read();
+            assertEquals(200, r.status());
+            assertEquals("timeout=1", r.header("keep-alive"));
+            String state = c.awaitClose(4000);
+            assertTrue(state, !"open".equals(state));
+            long elapsed = System.currentTimeMillis() - start;
+            assertTrue("elapsed " + elapsed, elapsed >= 900 && elapsed < 4000);
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
+    public void th05_bodyReadTimeoutChangedWhileRunning() throws Exception {
+        start();
+        server.setBodyReadTimeout(500);
+        RawConnection c = connect();
+        try {
+            c.send("POST /read HTTP/1.1\r\nHost: x\r\nContent-Length: 10\r\n\r\nhello");
+            String state = c.awaitClose(3000);
+            assertTrue(state, !"open".equals(state));
+        } finally {
+            c.close();
+        }
+        assertTrue(String.valueOf(seen.get()), seen.get() instanceof SocketTimeoutException);
+    }
+
+    @Test
+    public void th06_writeTimeoutChangedWhileRunning() throws Exception {
+        start();
+        server.setWriteTimeout(500);
+        RawConnection c = connect(4096);
+        try {
+            c.send("GET /big HTTP/1.1\r\nHost: x\r\n\r\n");
+            long deadline = System.currentTimeMillis() + 3000;
+            while (server.getStats().writeTimeouts == 0 && System.currentTimeMillis() < deadline) {
+                Thread.sleep(20);
+            }
+            assertEquals(1, server.getStats().writeTimeouts);
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
+    public void th09_queueWaitTimeoutChangedWhileRunning() throws Exception {
+        org.junit.Assume.assumeFalse(tls); // a queued TLS client blocks in its handshake constructor
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(1).maxConnections(4)
+                .queueWaitTimeout(30000));
+        RawConnection a = connect();
+        RawConnection b = null;
+        try {
+            a.send("GET /block HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertTrue(entered.await(2, TimeUnit.SECONDS));
+            server.setQueueWaitTimeout(300);
+            long start = System.currentTimeMillis();
+            b = connect();
+            b.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertEquals(503, b.read().status());
+            assertTrue(System.currentTimeMillis() - start < 2500);
+            release.countDown();
+            assertEquals(200, a.read().status());
+        } finally {
+            release.countDown();
+            a.close();
+            if (b != null) {
+                b.close();
+            }
+        }
+    }
+
+    @Test
+    public void th01_idleWorkersRetireWhenLimitLowered() throws Exception {
+        start();
+        List<RawConnection> conns = new ArrayList<RawConnection>();
+        try {
+            for (int i = 0; i < 4; i++) {
+                RawConnection c = connect();
+                c.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+                assertEquals(200, c.read().status());
+                conns.add(c);
+            }
+        } finally {
+            closeAll(conns);
+        }
+        long deadline = System.currentTimeMillis() + 2000;
+        while (server.getStats().openConnections > 0 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
+        assertEquals(4, server.getStats().workerThreads); // idle, kept for workerKeepAlive (60 s)
+        server.setWorkerLimits(1, 128);
+        deadline = System.currentTimeMillis() + 2000;
+        while (server.getStats().workerThreads > 1 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
+        assertEquals(1, server.getStats().workerThreads);
+        RawConnection c = connect();
+        try {
+            c.send("GET /hello HTTP/1.1\r\nHost: x\r\n\r\n");
+            assertEquals(200, c.read().status());
+        } finally {
+            c.close();
+        }
+    }
+
+    @Test
+    public void th01_limitsFlippedUnderTraffic() throws Exception {
+        org.junit.Assume.assumeFalse(tls); // a TLS client blocks in its handshake while queued
+        start(com.snoworca.tinyhttpd.testing.TestServers.builder().maxWorkers(2).maxConnections(4)
+                .queueWaitTimeout(2000));
+        final AtomicBoolean stop = new AtomicBoolean();
+        final List<String> bad = new CopyOnWriteArrayList<String>();
+        final java.util.concurrent.atomic.AtomicInteger ok = new java.util.concurrent.atomic.AtomicInteger();
+        final int[][] limits = {{1, 2}, {2, 4}, {8, 16}, {1, 1}, {64, 128}};
+        Thread flipper = new Thread(() -> {
+            for (int i = 0; !stop.get(); i++) {
+                server.setWorkerLimits(limits[i % limits.length][0], limits[i % limits.length][1]);
+                try {
+                    Thread.sleep(2);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        });
+        flipper.start();
+        List<Thread> clients = new ArrayList<Thread>();
+        for (int t = 0; t < 6; t++) {
+            Thread client = new Thread(() -> {
+                for (int i = 0; i < 40; i++) {
+                    try {
+                        RawConnection c = connect();
+                        try {
+                            c.setReadTimeout(5000);
+                            c.send("GET /hello HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n");
+                            int st = c.read().status();
+                            if (st == 200) {
+                                ok.incrementAndGet();
+                            } else if (st != 503) {
+                                bad.add("status " + st);
+                            }
+                        } finally {
+                            c.close();
+                        }
+                    } catch (java.net.SocketTimeoutException e) {
+                        bad.add(e.toString()); // a hang, unlike the closes below
+                    } catch (IOException overload) {
+                        // Over capacity a just-accepted connection may be evicted as idle or reset after its 503.
+                    }
+                }
+            });
+            client.start();
+            clients.add(client);
+        }
+        for (Thread client : clients) {
+            client.join(30000);
+            assertFalse("client hung", client.isAlive());
+        }
+        stop.set(true);
+        flipper.join(2000);
+        assertTrue(bad.toString(), bad.isEmpty());
+        assertTrue("served " + ok.get(), ok.get() > 0);
+        server.setWorkerLimits(2, 4);
+        long deadline = System.currentTimeMillis() + 3000;
+        while ((server.getStats().workerThreads > 2 || server.getStats().queuedConnections > 0)
+                && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
+        assertTrue("threads " + server.getStats().workerThreads, server.getStats().workerThreads <= 2);
+        assertEquals(0, server.getStats().queuedConnections);
     }
 
     @Test

@@ -327,11 +327,24 @@ public class RequestParsingTest extends EngineTestBase {
         } finally {
             c.close();
         }
+        server.setMaxRequestBodyBytes(20); // equal to the body: allowed
+        assertEquals(204, post(req));
         server.setMaxRequestBodyBytes(10);
-        c = connect();
+        assertEquals(413, post(req));
+        assertEquals(413, post("POST /u HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\n14\r\n"
+                + repeat('u', 20) + "\r\n0\r\n\r\n"));
+        assertEquals(204, post("POST /u HTTP/1.1\r\nHost: x\r\nTransfer-Encoding: chunked\r\n\r\na\r\n"
+                + repeat('u', 10) + "\r\n0\r\n\r\n"));
+        assertEquals(10, server.getConfig().getMaxRequestBodyBytes());
+        server.setMaxRequestBodyBytes(-1); // back to no limit
+        assertEquals(204, post("POST /u HTTP/1.1\r\nHost: x\r\nContent-Length: 5000\r\n\r\n" + repeat('u', 5000)));
+    }
+
+    private int post(String raw) throws IOException {
+        RawConnection c = connect();
         try {
-            c.send(req);
-            assertEquals(413, c.read().status());
+            c.send(raw);
+            return c.read().status();
         } finally {
             c.close();
         }

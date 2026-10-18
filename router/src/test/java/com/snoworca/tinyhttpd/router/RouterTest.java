@@ -5,6 +5,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.After;
 import org.junit.Rule;
@@ -112,5 +116,66 @@ public class RouterTest {
         assertFalse(root.unmount("/share"));
         assertEquals(404, send(root, "GET", "/share/a").status());
         assertEquals("root {} /", send(root, "GET", "/").body);
+    }
+
+    @Test
+    public void mod06_unmountMatchesThePrefixAsMounted() throws IOException {
+        Router root = new Router().mount("share", says("share"));
+        assertEquals(200, send(root, "GET", "/share/a").status());
+        assertFalse(root.unmount("/other"));
+        assertFalse(root.unmount("/shar"));
+        assertTrue(root.unmount("/share")); // leading slash optional, as in mount
+        assertEquals(404, send(root, "GET", "/share/a").status());
+    }
+
+    @Test
+    public void mod06_unmountLeavesRoutesAndRemovesEveryMountAtThePrefix() throws IOException {
+        Router root = new Router().get("/a", says("route")).mount("/a", says("m1")).mount("/a", says("m2"))
+                .mount("/b", says("b"));
+        assertTrue(root.unmount("/a"));
+        assertEquals("route {} /a", send(root, "GET", "/a").body);
+        assertEquals(404, send(root, "GET", "/a/x").status());
+        assertEquals(200, send(root, "GET", "/b/x").status());
+        root.mount("/a", says("again"));
+        assertEquals(200, send(root, "GET", "/a/x").status());
+    }
+
+    @Test
+    public void mod06_mountAndUnmountUnderTraffic() throws Exception {
+        final Router root = new Router().get("/", says("root"));
+        send(root, "GET", "/"); // starts the server before the threads share it
+        final AtomicBoolean stop = new AtomicBoolean();
+        final List<String> bad = new CopyOnWriteArrayList<String>();
+        Thread flipper = new Thread(() -> {
+            while (!stop.get()) {
+                root.mount("/x", says("x"));
+                root.unmount("/x");
+            }
+        });
+        flipper.start();
+        List<Thread> clients = new ArrayList<Thread>();
+        for (int t = 0; t < 4; t++) {
+            Thread c = new Thread(() -> {
+                try {
+                    for (int i = 0; i < 100; i++) {
+                        int st = send(root, "GET", "/").status();
+                        int sx = send(root, "GET", "/x/y").status();
+                        if (st != 200 || sx != 200 && sx != 404) {
+                            bad.add(st + "/" + sx);
+                        }
+                    }
+                } catch (IOException e) {
+                    bad.add(e.toString());
+                }
+            });
+            c.start();
+            clients.add(c);
+        }
+        for (Thread c : clients) {
+            c.join(20000);
+        }
+        stop.set(true);
+        flipper.join(2000);
+        assertTrue(bad.toString(), bad.isEmpty());
     }
 }
