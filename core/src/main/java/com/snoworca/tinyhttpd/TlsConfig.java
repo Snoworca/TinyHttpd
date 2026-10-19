@@ -251,7 +251,7 @@ public final class TlsConfig {
         }
 
         /**
-         * @param millis time a client has to finish the handshake; default 10 s
+         * @param millis time a client has to finish the handshake, {@link TinyHttpd#UNLIMITED} for none; default 10 s
          * @return this builder
          */
         public Builder handshakeTimeout(int millis) {

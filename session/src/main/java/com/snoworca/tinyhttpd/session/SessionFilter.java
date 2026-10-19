@@ -2,6 +2,7 @@ package com.snoworca.tinyhttpd.session;
 
 import java.io.IOException;
 
+import com.snoworca.tinyhttpd.TinyHttpd;
 import com.snoworca.tinyhttpd.http.Cookie;
 import com.snoworca.tinyhttpd.http.Filter;
 import com.snoworca.tinyhttpd.http.FilterChain;
@@ -49,19 +50,21 @@ public final class SessionFilter implements Filter {
         return this;
     }
 
-    /** @param millis inactivity before expiry (default 30 min) @return this filter */
+    /** @param millis inactivity before expiry (default 30 min), {@link TinyHttpd#UNLIMITED_LONG} for
+     *        none @return this filter */
     public SessionFilter maxInactive(long millis) {
         this.maxInactiveMillis = millis;
         return this;
     }
 
-    /** @param n most sessions (default 1000) @return this filter */
+    /** @param n most sessions (default 1000), {@link TinyHttpd#UNLIMITED} for none @return this filter */
     public SessionFilter maxSessions(int n) {
         this.maxSessions = n;
         return this;
     }
 
-    /** @param n most sessions per client address (default 50) @return this filter */
+    /** @param n most sessions per client address (default 50), {@link TinyHttpd#UNLIMITED} for none
+     *        @return this filter */
     public SessionFilter maxSessionsPerAddress(int n) {
         this.maxSessionsPerAddress = n;
         return this;

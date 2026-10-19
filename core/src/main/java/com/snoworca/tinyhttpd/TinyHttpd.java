@@ -66,7 +66,7 @@ public final class TinyHttpd {
      * Stops accepting, closes idle connections and event streams at once, waits up to {@code graceMillis} for
      * requests in progress, then closes the rest and interrupts their workers.
      *
-     * @param graceMillis grace period
+     * @param graceMillis grace period; {@link #UNLIMITED_LONG} waits for every request to finish
      */
     public void stop(long graceMillis) {
         server.stop(graceMillis);
@@ -109,21 +109,23 @@ public final class TinyHttpd {
     /**
      * Changes the request body limit while running; requests whose body has not started apply the new value.
      *
-     * @param value request body limit (413), -1 for none
+     * @param value request body limit (413), -1 or {@link #UNLIMITED_LONG} for none
      */
     public void setMaxRequestBodyBytes(long value) {
         config.setMaxRequestBodyBytes(value);
     }
 
     /**
-     * @param millis request line and headers (408); takes effect for timers started after the call
+     * @param millis request line and headers (408); {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setHeaderTimeout(int millis) {
         set("headerTimeout", millis, 1);
     }
 
     /**
-     * @param millis request body stall; takes effect for timers started after the call
+     * @param millis request body stall; {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setBodyReadTimeout(int millis) {
         set("bodyReadTimeout", millis, 1);
@@ -137,49 +139,56 @@ public final class TinyHttpd {
     }
 
     /**
-     * @param millis blocked response write; takes effect for timers started after the call
+     * @param millis blocked response write; {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setWriteTimeout(int millis) {
         set("writeTimeout", millis, 1);
     }
 
     /**
-     * @param millis idle keep-alive connection; takes effect for timers started after the call
+     * @param millis idle keep-alive connection; {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setIdleTimeout(int millis) {
         set("idleTimeout", millis, 1);
     }
 
     /**
-     * @param millis idle keep-alive connection while busy; takes effect for timers started after the call
+     * @param millis idle keep-alive connection while busy; {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setIdleTimeoutUnderLoad(int millis) {
         set("idleTimeoutUnderLoad", millis, 1);
     }
 
     /**
-     * @param millis wait for a worker (503); takes effect for timers started after the call
+     * @param millis wait for a worker (503); {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setQueueWaitTimeout(int millis) {
         set("queueWaitTimeout", millis, 1);
     }
 
     /**
-     * @param millis lingering close; takes effect for timers started after the call
+     * @param millis lingering close; {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setLingerTimeout(int millis) {
         set("lingerTimeout", millis, 0);
     }
 
     /**
-     * @param millis idle worker thread lifetime; takes effect for timers started after the call
+     * @param millis idle worker thread lifetime; {@link #UNLIMITED} for none.
+     *        Takes effect for timers started after the call
      */
     public void setWorkerKeepAlive(int millis) {
         set("workerKeepAlive", millis, 1);
     }
 
     /**
-     * @param millis default grace of {@link #stop()}; takes effect for timers started after the call
+     * @param millis default grace of {@link #stop()}; {@link #UNLIMITED} to wait for every request.
+     *        Takes effect for timers started after the call
      */
     public void setShutdownGrace(int millis) {
         set("shutdownGrace", millis, 0);
@@ -189,8 +198,9 @@ public final class TinyHttpd {
      * Changes the worker limits while running. Raising them starts queued connections at once; lowering them lets
      * busy workers finish their connection and then exit.
      *
-     * @param maxWorkers worker threads for ordinary connections
-     * @param maxConnections open plus queued ordinary connections, at least {@code maxWorkers}
+     * @param maxWorkers worker threads for ordinary connections; {@link #UNLIMITED} for none
+     * @param maxConnections open plus queued ordinary connections, at least {@code maxWorkers}; {@link #UNLIMITED}
+     *        for none
      */
     public void setWorkerLimits(int maxWorkers, int maxConnections) {
         if (maxWorkers <= 0 || maxConnections < maxWorkers) {
@@ -209,12 +219,13 @@ public final class TinyHttpd {
         server.limitsChanged();
     }
 
-    /** @param value open Server-Sent Events streams; existing streams above it are kept */
+    /** @param value open Server-Sent Events streams; existing streams above it are kept; {@link #UNLIMITED} for none */
     public void setMaxEventStreams(int value) {
         set("maxEventStreams", value, 0);
     }
 
-    /** @param value upgraded (WebSocket) connections; existing connections above it are kept */
+    /** @param value upgraded (WebSocket) connections; existing connections above it are kept; {@link #UNLIMITED} for
+     *        none */
     public void setMaxUpgradedConnections(int value) {
         set("maxUpgradedConnections", value, 0);
     }
@@ -434,7 +445,8 @@ public final class TinyHttpd {
         }
 
         /**
-         * @param value per-connection input buffer; also bounds one header line; default 8192
+         * @param value per-connection input buffer; also bounds one header line. Allocated, so not
+         *        {@link TinyHttpd#UNLIMITED}; default 8192
          * @return this builder
          */
         public Builder inputBufferBytes(int value) {
@@ -442,7 +454,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value response buffer; bodies that fit get a Content-Length; default 8192
+         * @param value response buffer; bodies that fit get a Content-Length. Allocated, so not
+         *        {@link TinyHttpd#UNLIMITED}; default 8192
          * @return this builder
          */
         public Builder outputBufferBytes(int value) {
@@ -450,7 +463,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value request line limit (414); default 8190
+         * @param value request line limit (414), {@link TinyHttpd#UNLIMITED} for the input buffer size; default 8190
          * @return this builder
          */
         public Builder maxRequestLineBytes(int value) {
@@ -458,7 +471,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value total header bytes (431); default 16*1024
+         * @param value total header bytes (431), {@link TinyHttpd#UNLIMITED} for none; default 16*1024
          * @return this builder
          */
         public Builder maxHeaderBytes(int value) {
@@ -466,7 +479,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value header lines (431); default 100
+         * @param value header lines (431), {@link TinyHttpd#UNLIMITED} for none; default 100
          * @return this builder
          */
         public Builder maxHeaderCount(int value) {
@@ -474,7 +487,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value request body limit (413), -1 for none; default -1
+         * @param value request body limit (413), -1 or {@link TinyHttpd#UNLIMITED_LONG} for none; default -1
          * @return this builder
          */
         public Builder maxRequestBodyBytes(long value) {
@@ -482,7 +495,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value unread body bytes discarded to keep a connection; default 64*1024
+         * @param value unread body bytes discarded to keep a connection, {@link TinyHttpd#UNLIMITED_LONG} for none;
+         *        default 64*1024
          * @return this builder
          */
         public Builder maxDrainBytes(long value) {
@@ -490,7 +504,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value chunk size line limit; default 1024
+         * @param value chunk size line limit, {@link TinyHttpd#UNLIMITED} for the input buffer size; default 1024
          * @return this builder
          */
         public Builder maxChunkSizeLineBytes(int value) {
@@ -498,7 +512,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value chunked trailer limit; default 8*1024
+         * @param value chunked trailer limit, {@link TinyHttpd#UNLIMITED} for none; default 8*1024
          * @return this builder
          */
         public Builder maxTrailerBytes(int value) {
@@ -506,7 +520,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value requests before the server closes a connection; default 1000
+         * @param value requests before the server closes a connection, {@link TinyHttpd#UNLIMITED} for none; default
+         *        1000
          * @return this builder
          */
         public Builder maxRequestsPerConnection(int value) {
@@ -514,7 +529,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value how long input is discarded before a server-initiated close; default 2000
+         * @param value how long input is discarded before a server-initiated close, {@link TinyHttpd#UNLIMITED} for
+         *        none; default 2000
          * @return this builder
          */
         public Builder lingerTimeout(int value) {
@@ -522,7 +538,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value keep-alive idle timeout; default 15000
+         * @param value keep-alive idle timeout, {@link TinyHttpd#UNLIMITED} for none; default 15000
          * @return this builder
          */
         public Builder idleTimeout(int value) {
@@ -530,7 +546,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value idle timeout while more than 75% of workers are busy; default 2000
+         * @param value idle timeout while more than 75% of workers are busy, {@link TinyHttpd#UNLIMITED} for none;
+         *        default 2000
          * @return this builder
          */
         public Builder idleTimeoutUnderLoad(int value) {
@@ -538,7 +555,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value deadline for the whole request header (408); default 10000
+         * @param value deadline for the whole request header (408), {@link TinyHttpd#UNLIMITED} for none; default 10000
          * @return this builder
          */
         public Builder headerTimeout(int value) {
@@ -558,7 +575,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value timeout of one request body read; default 30000
+         * @param value timeout of one request body read, {@link TinyHttpd#UNLIMITED} for none; default 30000
          * @return this builder
          */
         public Builder bodyReadTimeout(int value) {
@@ -566,7 +583,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value timeout of one socket write, enforced by the watchdog; default 30000
+         * @param value timeout of one socket write, enforced by the watchdog, {@link TinyHttpd#UNLIMITED} for none;
+         *        default 30000
          * @return this builder
          */
         public Builder writeTimeout(int value) {
@@ -574,7 +592,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value how long an accepted socket may wait for a worker (503); default 5000
+         * @param value how long an accepted socket may wait for a worker (503), {@link TinyHttpd#UNLIMITED} for none;
+         *        default 5000
          * @return this builder
          */
         public Builder queueWaitTimeout(int value) {
@@ -582,7 +601,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value how long an idle worker thread lives; default 60000
+         * @param value how long an idle worker thread lives, {@link TinyHttpd#UNLIMITED} for none; default 60000
          * @return this builder
          */
         public Builder workerKeepAlive(int value) {
@@ -590,7 +609,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value default grace period of stop(); default 5000
+         * @param value default grace period of stop(), {@link TinyHttpd#UNLIMITED} to wait for every request; default
+         *        5000
          * @return this builder
          */
         public Builder shutdownGrace(int value) {
@@ -598,7 +618,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value worker threads for ordinary connections; default 64
+         * @param value worker threads for ordinary connections, {@link TinyHttpd#UNLIMITED} for none; default 64
          * @return this builder
          */
         public Builder maxWorkers(int value) {
@@ -606,7 +626,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value open plus queued ordinary connections; default 128
+         * @param value open plus queued ordinary connections, {@link TinyHttpd#UNLIMITED} for none; default 128
          * @return this builder
          */
         public Builder maxConnections(int value) {
@@ -614,7 +634,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value connections from one client address; default 32
+         * @param value connections from one client address, {@link TinyHttpd#UNLIMITED} for none; default 32
          * @return this builder
          */
         public Builder maxConnectionsPerAddress(int value) {
@@ -622,7 +642,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value stack size requested for worker threads (0 = platform default); default 256*1024
+         * @param value stack size requested for worker threads (0 = platform default). Allocated, so not
+         *        {@link TinyHttpd#UNLIMITED}; default 256*1024
          * @return this builder
          */
         public Builder workerStackBytes(int value) {
@@ -630,7 +651,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value size of one sendFile copy buffer; default 64*1024
+         * @param value size of one sendFile copy buffer. Allocated, so not {@link TinyHttpd#UNLIMITED}; default 64*1024
          * @return this builder
          */
         public Builder sendFileBufferBytes(int value) {
@@ -638,7 +659,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value sendFile copy buffers in the shared pool; default 8
+         * @param value sendFile copy buffers in the shared pool, {@link TinyHttpd#UNLIMITED} for none; default 8
          * @return this builder
          */
         public Builder sendFileBuffers(int value) {
@@ -646,7 +667,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value open Server-Sent Events streams; default 64
+         * @param value open Server-Sent Events streams, {@link TinyHttpd#UNLIMITED} for none; default 64
          * @return this builder
          */
         public Builder maxEventStreams(int value) {
@@ -654,7 +675,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value queued events per stream before it is closed; default 64
+         * @param value queued events per stream before it is closed, {@link TinyHttpd#UNLIMITED} for none; default 64
          * @return this builder
          */
         public Builder eventQueueEvents(int value) {
@@ -662,7 +683,8 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value queued bytes per stream before it is closed; default 64*1024
+         * @param value queued bytes per stream before it is closed, {@link TinyHttpd#UNLIMITED} for none; default
+         *        64*1024
          * @return this builder
          */
         public Builder eventQueueBytes(int value) {
@@ -670,7 +692,7 @@ public final class TinyHttpd {
             return this;
         }
         /**
-         * @param value upgraded (WebSocket) connections; default 16
+         * @param value upgraded (WebSocket) connections, {@link TinyHttpd#UNLIMITED} for none; default 16
          * @return this builder
          */
         public Builder maxUpgradedConnections(int value) {

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import com.snoworca.tinyhttpd.TinyHttpd;
 import com.snoworca.tinyhttpd.http.FileResponses;
 import com.snoworca.tinyhttpd.http.Handler;
 import com.snoworca.tinyhttpd.http.HttpException;
@@ -84,7 +85,8 @@ public final class StaticFileHandler implements Handler {
     }
 
     /**
-     * @param bytes largest file served (403 above it), -1 for none; default -1
+     * @param bytes largest file served (403 above it), -1 or {@link TinyHttpd#UNLIMITED_LONG} for none;
+     *        default -1
      * @return this handler
      */
     public StaticFileHandler maxFileBytes(long bytes) {

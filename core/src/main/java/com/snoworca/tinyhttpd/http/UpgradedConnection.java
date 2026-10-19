@@ -17,7 +17,7 @@ public interface UpgradedConnection extends Closeable {
     /**
      * Sets how long a read may block before it throws {@link java.net.SocketTimeoutException}.
      *
-     * @param millis timeout, 0 for none
+     * @param millis timeout, 0 or {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED} for none
      * @throws IOException on socket failure
      */
     void setReadTimeout(int millis) throws IOException;

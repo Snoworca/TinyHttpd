@@ -43,7 +43,8 @@ public interface Part {
     /**
      * Reads a small field as text in the part's charset, UTF-8 by default.
      *
-     * @param maxBytes largest content accepted
+     * @param maxBytes largest content accepted, {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED} for none (held in
+     *        memory)
      * @return the text
      * @throws IOException on failure
      * @throws HttpException 413 if the part is larger

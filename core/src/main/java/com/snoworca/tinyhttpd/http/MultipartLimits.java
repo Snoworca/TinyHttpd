@@ -25,8 +25,8 @@ public final class MultipartLimits {
     }
 
     /**
-     * @param maxTotalBytes largest body
-     * @param maxParts most parts
+     * @param maxTotalBytes largest body, {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED_LONG} for none
+     * @param maxParts most parts, {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED} for none
      * @return limits with each part bounded by {@code maxTotalBytes}, 8 KB part headers and a 16 KB buffer
      */
     public static MultipartLimits of(long maxTotalBytes, int maxParts) {
@@ -34,7 +34,7 @@ public final class MultipartLimits {
     }
 
     /**
-     * @param bytes largest single part
+     * @param bytes largest single part, {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED_LONG} for none
      * @return a copy
      */
     public MultipartLimits withMaxPartBytes(long bytes) {
@@ -42,7 +42,7 @@ public final class MultipartLimits {
     }
 
     /**
-     * @param bytes largest header block of a part
+     * @param bytes largest header block of a part, {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED} for none
      * @return a copy
      */
     public MultipartLimits withMaxPartHeaderBytes(int bytes) {
@@ -50,7 +50,7 @@ public final class MultipartLimits {
     }
 
     /**
-     * @param bytes parser buffer size
+     * @param bytes parser buffer size; allocated, so not {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED}
      * @return a copy
      */
     public MultipartLimits withBufferBytes(int bytes) {

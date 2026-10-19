@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import com.snoworca.tinyhttpd.TinyHttpd;
 import com.snoworca.tinyhttpd.http.Handler;
 import com.snoworca.tinyhttpd.http.HttpException;
 import com.snoworca.tinyhttpd.http.Request;
@@ -78,7 +79,8 @@ public class WebSocketHandler implements Handler {
     }
 
     /**
-     * @param bytes largest frame payload, also the largest unfragmented message (default 1 MB)
+     * @param bytes largest frame payload, also the largest unfragmented message (default 1 MB);
+     *        {@link TinyHttpd#UNLIMITED} for none (held in memory)
      * @return this handler
      */
     public WebSocketHandler maxFramePayloadBytes(int bytes) {
@@ -87,7 +89,8 @@ public class WebSocketHandler implements Handler {
     }
 
     /**
-     * @param bytes largest message after joining fragments (default 1 MB)
+     * @param bytes largest message after joining fragments (default 1 MB); {@link TinyHttpd#UNLIMITED} for
+     *        none (held in memory)
      * @return this handler
      */
     public WebSocketHandler maxMessageBytes(int bytes) {
@@ -96,7 +99,8 @@ public class WebSocketHandler implements Handler {
     }
 
     /**
-     * @param millis idle time before a ping; a second silent period closes with 1001 (default 30 s)
+     * @param millis idle time before a ping; a second silent period closes with 1001 (default 30 s);
+     *        {@link TinyHttpd#UNLIMITED} for no ping
      * @return this handler
      */
     public WebSocketHandler pingInterval(int millis) {

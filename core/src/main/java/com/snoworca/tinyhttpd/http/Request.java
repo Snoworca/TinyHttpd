@@ -111,7 +111,8 @@ public interface Request {
     /**
      * Reads an {@code application/x-www-form-urlencoded} body.
      *
-     * @param maxBytes largest body accepted
+     * @param maxBytes largest body accepted, {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED} for none (the body is
+     *        held in memory)
      * @return the decoded fields
      * @throws IOException on I/O failure
      * @throws HttpException 415 for another content type, 413 if the body is larger than {@code maxBytes}

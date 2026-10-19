@@ -46,7 +46,7 @@ public interface EventStream extends Closeable {
      * for {@code heartbeatMillis}. A vanished client is noticed by a failed heartbeat or the write timeout, so it may
      * take up to {@code heartbeatMillis + writeTimeout}.
      *
-     * @param heartbeatMillis heartbeat interval
+     * @param heartbeatMillis heartbeat interval, {@link com.snoworca.tinyhttpd.TinyHttpd#UNLIMITED_LONG} for none
      * @throws InterruptedException if the owner thread is interrupted
      * @throws IllegalStateException on another thread
      */
