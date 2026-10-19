@@ -347,7 +347,7 @@ final class Multipart implements MultipartReader {
         @Override
         public String readString(int maxBytes) throws IOException, HttpException {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] b = new byte[Math.min(4096, maxBytes + 1)];
+            byte[] b = new byte[Math.min(4095, maxBytes) + 1];
             int n;
             while ((n = stream.read(b, 0, b.length)) >= 0) {
                 out.write(b, 0, n);

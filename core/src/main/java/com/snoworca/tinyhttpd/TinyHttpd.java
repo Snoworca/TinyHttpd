@@ -23,6 +23,16 @@ import com.snoworca.tinyhttpd.server.HttpServer;
  */
 public final class TinyHttpd {
 
+    /**
+     * No limit, for an {@code int} timeout, size or count setting: it is {@code Integer.MAX_VALUE}, so a timeout waits
+     * about 24.8 days. Buffer sizes are allocated, so they do not take it. A line limit above the input buffer is
+     * bounded by the buffer.
+     */
+    public static final int UNLIMITED = Integer.MAX_VALUE;
+
+    /** No limit, for a {@code long} setting such as {@code maxRequestBodyBytes}: {@code Long.MAX_VALUE}. */
+    public static final long UNLIMITED_LONG = Long.MAX_VALUE;
+
     private final ServerConfig config;
 
     private final HttpServer server;
@@ -708,10 +718,10 @@ public final class TinyHttpd {
             positive("eventQueueEvents", eventQueueEvents);
             positive("eventQueueBytes", eventQueueBytes);
             nonNegative("maxUpgradedConnections", maxUpgradedConnections);
-            if (inputBufferBytes < maxChunkSizeLineBytes + 2) {
+            if (maxChunkSizeLineBytes != UNLIMITED && inputBufferBytes - 2 < maxChunkSizeLineBytes) {
                 throw new IllegalArgumentException("inputBufferBytes must be >= maxChunkSizeLineBytes + 2");
             }
-            if (inputBufferBytes < maxRequestLineBytes + 2) {
+            if (maxRequestLineBytes != UNLIMITED && inputBufferBytes - 2 < maxRequestLineBytes) {
                 throw new IllegalArgumentException("inputBufferBytes must be >= maxRequestLineBytes + 2");
             }
             if (maxConnections < maxWorkers) {

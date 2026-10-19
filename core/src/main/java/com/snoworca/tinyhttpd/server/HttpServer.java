@@ -119,8 +119,8 @@ public final class HttpServer {
         };
         ThreadFactory tf = config.threadFactory != null ? config.threadFactory : new DefaultThreadFactory(config, log);
         this.pool = new WorkerPool(this, tf);
-        this.outputBuffers = new BufferPool(config.outputBufferBytes,
-                config.getMaxWorkers() + config.getMaxEventStreams() + config.getMaxUpgradedConnections());
+        this.outputBuffers = new BufferPool(config.outputBufferBytes, (int) Math.min(Integer.MAX_VALUE,
+                (long) config.getMaxWorkers() + config.getMaxEventStreams() + config.getMaxUpgradedConnections()));
         this.sendFileBuffers = new BufferPool(config.sendFileBufferBytes, config.sendFileBuffers);
     }
 
@@ -393,9 +393,9 @@ public final class HttpServer {
             }
         }
         // Adaptive idle timeout with hysteresis: above 75% busy shorten, below 60% restore.
-        if (!underLoad && busy * 4 > config.getMaxWorkers() * 3) {
+        if (!underLoad && busy * 4L > config.getMaxWorkers() * 3L) {
             underLoad = true;
-        } else if (underLoad && busy * 5 < config.getMaxWorkers() * 3) {
+        } else if (underLoad && busy * 5L < config.getMaxWorkers() * 3L) {
             underLoad = false;
         }
         pool.expireQueued(now);
@@ -464,7 +464,7 @@ public final class HttpServer {
             closeQuietly(b.socket);
         }
         pool.shutdown();
-        long deadline = System.currentTimeMillis() + graceMillis;
+        long deadline = System.currentTimeMillis() + Math.min(graceMillis, Long.MAX_VALUE / 2);
         for (Connection c : registry) {
             c.onServerStopping();
         }

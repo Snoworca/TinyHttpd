@@ -3,7 +3,7 @@
 - 날짜: 2026-10-19, 커밋 `46b973e` 기준
 - 소유자 요구: 타임아웃은 모두 0 이하이면 무제한으로 둔다. 크기를 정하는 설정도 마찬가지다.
 - 범위: core `TinyHttpd.Builder`·런타임 setter·`TlsConfig`, `http` API의 크기 인자, webserver·websocket·session 모듈의 설정.
-- 이 문서는 조사 결과다. 구현은 아래 "결정이 필요한 항목"이 정해진 뒤에 한다.
+- 결론은 6절이다. "0 이하 = 무제한" 대신 **타입의 최댓값 상수**를 쓰기로 했다. 1~5절은 처음 규칙을 따랐을 때의 조사 기록이다.
 
 ## 1. 현재 규칙 요약
 
@@ -111,3 +111,28 @@
 | D5 | 프로토콜 값(`Cookie`, `CorsFilter.maxAge`) | 제외한다 |
 | D6 | `SessionFilter.cleanupInterval` | 주기라 제외한다. 0 이하는 요청마다 청소로 둔다 |
 | D7 | P9 감사 기준 | "기본값에 상한이 있다"로 고친다. 무제한은 javadoc에 위험을 적는다 |
+
+## 6. 결정과 구현 (2026-10-19, #115)
+
+- **0 이하 = 무제한 규칙은 쓰지 않는다.**
+  - 대신 상수 `TinyHttpd.UNLIMITED`(`Integer.MAX_VALUE`)와 `TinyHttpd.UNLIMITED_LONG`(`Long.MAX_VALUE`)을 둔다.
+  - 0의 기존 의미와 검증은 그대로다. 그래서 3절의 "의미가 뒤집히는 설정"과 `stop(0)`은 문제가 되지 않는다.
+- **타임아웃:** `UNLIMITED`는 약 24.8일이다. 마감은 `long`으로 계산하므로 넘치지 않는다.
+- **D1:** `maxWorkers`와 `maxConnections`도 `UNLIMITED`를 받는다(소유자 결정). CLAUDE.md의 크기 제한 풀은 **기본값**에 대한 요구로 읽는다.
+- **D2:**
+  - 버퍼 할당 크기에는 쓰지 않는다. 쓰면 그 크기만큼 할당한다.
+  - 줄 길이(`maxRequestLineBytes`, `maxChunkSizeLineBytes`)에 쓰면 버퍼 검사를 건너뛰고, 실제 상한은 입력 버퍼 크기가 된다.
+- **D5·D6:** 프로토콜 값과 주기에는 적용하지 않는다. 이 방식에서는 따로 할 일이 없다.
+- **D7:** P9 기준을 "기본값에 상한이 있다"로 고쳤다(`docs/next/p09-security.md`).
+- **최댓값에서 넘치던 곳을 고쳤다** (`UnlimitedSettingsTest`; 수정을 되돌리면 4건 모두 실패한다).
+  - `InputBuffer.readLine`: `max + 1`이 넘쳐서 여러 번 읽어 들어온 줄이 414/400이 됐다.
+  - `BodyInput.drain`: `max + 1`과 `budget + 1`이 넘쳐서 빈 버퍼로 회전했다.
+  - `Part.readString`: `maxBytes + 1`이 넘쳐서 `NegativeArraySizeException`이 났다.
+  - `HttpServer.stop(long)`: `now + grace`가 과거로 넘쳐서 기다리지 않았다.
+  - 테스트 없이 고친 곳:
+    - 빌더의 줄 길이 검사(`+ 2`).
+    - 출력 버퍼 풀 크기 합.
+    - 부하 판정 곱셈. `MAX * 3`은 우연히 양수라 실제 결함은 아니었다.
+    - `closeIfGraceOver`의 `int` 덧셈.
+- **넘치지 않는 곳:** `SseStream.awaitClosed`의 `lastWrite + h - now`. 중간 결과가 넘쳐도 최종값이 `long` 범위 안이라 정확하다.
+- **남은 위험:** `UNLIMITED`인 header·body·write 타임아웃은 SEC-07 방어를 끈다. 메모리에 모으는 상한(WebSocket 메시지, 헤더, SSE 대기열)은 힙이 한계다.

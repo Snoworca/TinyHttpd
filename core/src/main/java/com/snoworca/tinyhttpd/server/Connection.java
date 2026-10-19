@@ -500,7 +500,7 @@ final class Connection {
     /** Aborts a connection closed by {@link #closeIdle} whose worker did not finish within {@link #CLOSE_GRACE_MS}. */
     void closeIfGraceOver(long now) {
         long at = closeRequestedAt;
-        if (at != 0 && now - at >= CLOSE_GRACE_MS + cfg.getLingerTimeout()) {
+        if (at != 0 && now - at >= CLOSE_GRACE_MS + (long) cfg.getLingerTimeout()) {
             abortSocket();
         }
     }
