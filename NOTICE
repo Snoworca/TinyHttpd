@@ -1,0 +1,23 @@
+TinyHttpd
+Copyright (c) 2026, Snoworca
+
+TinyHttpd is based on NanoHttpd and continues its lightweight embedded HTTP
+server approach with a redesigned engine and public API. It was forked from
+NanoHttpd commit efb2ebf85a2b06f7c508aba9eaad5377e3a01e81 (2019-07-03).
+
+Upstream project: https://github.com/NanoHttpd/nanohttpd
+
+NanoHttpd copyright notice:
+Copyright (c) 2012-2013 by Paul S. Hawke, 2001,2005-2013 by Jarno Elonen, 2010 by Konstantinos Togias
+All rights reserved.
+
+TinyHttpd is distributed under the BSD 3-Clause License in LICENSE.
+The unmodified upstream copyright notice, conditions and disclaimer from the
+fork-point commit are preserved in docs/licenses/NanoHttpd-LICENSE.md.
+Retain both license texts when redistributing the source. For binary
+redistribution, reproduce their copyright notices, conditions and disclaimers
+in the documentation and/or other materials provided with the distribution.
+Include this attribution notice alongside them to preserve project provenance.
+
+TinyHttpd is an independent project. No endorsement by the NanoHttpd
+organization or its contributors is claimed.
