@@ -34,3 +34,16 @@ target
 /*.gpg
 /*.asc
 /publish*.properties
+
+# Private local configuration and signing material
+/local.properties
+/signing*.properties
+/signing-info*.md
+/secrets*.json
+/credentials*.properties
+/.env
+/.env.*
+/*.p12
+/*.jks
+/*.keystore
+/*private*.pem
