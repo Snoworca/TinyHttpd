@@ -24,7 +24,7 @@ NanoHttpd(https://github.com/NanoHttpd/nanohttpd)를 포크해 대대적으로 �
 
 ### 이름과 좌표
 - 프로젝트 이름: **TinyHttpd**
-- 패키지 / groupId: **`com.snoworca.tinyhttpd`** (기존 `org.nanohttpd` 사용 금지)
+- Java 패키지: **`com.snoworca.tinyhttpd`** (기존 `org.nanohttpd` 사용 금지). Maven groupId: **`com.snoworca`**.
 - 원격 저장소: 원본은 `upstream`(https://github.com/NanoHttpd/nanohttpd, fetch 전용)으로 둔다. 자체 저장소는 `origin`(https://github.com/Snoworca/TinyHttpd), 기본 브랜치는 `main`이다.
 
 ### 라이선스: BSD-3-Clause 유지
@@ -54,7 +54,7 @@ NanoHttpd(https://github.com/NanoHttpd/nanohttpd)를 포크해 대대적으로 �
 - 세션은 core 밖의 선택 모듈(`tinyhttpd-session`)에 둔다. 쿼리와 form을 합친 `getParameter`는 두지 않는다.
 - `javax.servlet-api` 3.1.0 어댑터(`tinyhttpd-servlet`)는 로드맵의 마지막 단계에 둔다.
 - 구 코드를 고치지 않는다. 새 엔진(`com.snoworca.tinyhttpd.server`)과 새 API를 옆에 새로 만들고, 모든 모듈을 옮긴 뒤 구 패키지를 삭제한다.
-- 0.x 동안은 호환 계층 없이 깨는 변경을 허용한다.
+- 첫 공개 버전은 3.0.0이다(소유자 결정, 2026-10-22). 이후 마이너·패치 버전은 공개 API 호환성을 유지하고, 깨는 변경은 메이저 버전으로 배포한다.
 - 단계별 작업, 기본값, 테스트 ID는 `docs/next/`에 있다(README가 목차). 작업을 시작하거나 끝낼 때 그 문서의 상태 표시를 갱신한다.
 
 ## 저장소 구성

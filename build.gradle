@@ -3,8 +3,8 @@ plugins {
 }
 
 allprojects {
-    group = 'com.snoworca.tinyhttpd'
-    version = '0.1.0-SNAPSHOT'
+    group = 'com.snoworca'
+    version = '3.0.0'
 
     repositories {
         mavenCentral()
@@ -18,6 +18,22 @@ def libraryProjects = [':tinyhttpd-core', ':tinyhttpd-webserver', ':tinyhttpd-we
 configure(subprojects.findAll { it.path in libraryProjects }) {
     apply plugin: 'java-library'
     apply plugin: 'ru.vyarus.animalsniffer'
+
+    // P12-05: preserve TinyHttpd and upstream notices in binary/source/Javadoc JARs.
+    tasks.withType(Jar).configureEach {
+        from(rootProject.file('LICENSE')) {
+            into 'META-INF'
+            rename { 'LICENSE-tinyhttpd.txt' }
+        }
+        from(rootProject.file('NOTICE')) {
+            into 'META-INF'
+            rename { 'NOTICE-tinyhttpd.txt' }
+        }
+        from(rootProject.file('docs/licenses/NanoHttpd-LICENSE.md')) {
+            into 'META-INF'
+            rename { 'LICENSE-nanohttpd.txt' }
+        }
+    }
 
     // Java 8 language level, compiled with --release so only Java 8 class library APIs resolve.
     tasks.withType(JavaCompile).configureEach {

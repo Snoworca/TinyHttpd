@@ -23,7 +23,7 @@ A lightweight embedded HTTP server for Java and Android, built to keep memory us
 - **HTTP and live connections.** HTTP/1.1 keep-alive, chunked bodies, SSE, optional WebSocket support, and configurable TLS. SSE and upgraded connections have separate connection budgets.
 - **Compatibility and input checks.** Java 8 bytecode and Android 5.0/API 21 API checks, strict request parsing, configurable request limits, and a Host allowlist enabled by default.
 
-The current version is `0.1.0-SNAPSHOT`. Android API compatibility is checked during the build; the physical-device validation plan remains open. Memory targets and benchmark results depend on the workload and platform. See the [measurement notes](docs/research/baseline.md) and [Android verification plan](docs/next/p10-android-verification.md).
+The current version is `3.0.0`. Android API compatibility is checked during the build; the physical-device validation plan remains open. Memory targets and benchmark results depend on the workload and platform. See the [measurement notes](docs/research/baseline.md) and [Android verification plan](docs/next/p10-android-verification.md).
 
 ### Modules
 
@@ -34,6 +34,10 @@ The current version is `0.1.0-SNAPSHOT`. Android API compatibility is checked du
 | `tinyhttpd-websocket` | [websocket/](websocket/) | WebSocket handlers and connections |
 | `tinyhttpd-router` | [router/](router/) | Method/path routing and mounted handlers |
 | `tinyhttpd-session` | [session/](session/) | Optional in-memory sessions and CSRF filter |
+
+### Downloads
+
+Download binary, sources, and Javadoc JARs from [GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.0.0). Each optional module requires the core JAR. See the [release notes](CHANGELOG.md) for changes and migration notes.
 
 ### Quick tutorial
 
@@ -76,8 +80,8 @@ public final class HelloServer {
 **3. Compile and start it.**
 
 ```bash
-javac --release 8 -cp core/build/libs/tinyhttpd-core-0.1.0-SNAPSHOT.jar HelloServer.java
-java -cp ".:core/build/libs/tinyhttpd-core-0.1.0-SNAPSHOT.jar" HelloServer
+javac --release 8 -cp core/build/libs/tinyhttpd-core-3.0.0.jar HelloServer.java
+java -cp ".:core/build/libs/tinyhttpd-core-3.0.0.jar" HelloServer
 ```
 
 In another terminal:
@@ -92,7 +96,7 @@ Press Ctrl+C in the server terminal to stop it. `.daemon(false)` keeps this stan
 **4. Try the static file server.** Stop the hello server first, then run:
 
 ```bash
-java -cp "core/build/libs/tinyhttpd-core-0.1.0-SNAPSHOT.jar:webserver/build/libs/tinyhttpd-webserver-0.1.0-SNAPSHOT.jar" \
+java -cp "core/build/libs/tinyhttpd-core-3.0.0.jar:webserver/build/libs/tinyhttpd-webserver-3.0.0.jar" \
   com.snoworca.tinyhttpd.webserver.SimpleWebServer \
   -h 127.0.0.1 -p 8080 -d docs --listing
 ```
@@ -141,7 +145,7 @@ TinyHttpd is distributed under the **BSD 3-Clause License**. See [LICENSE](LICEN
 
 Copyright (c) 2026, Snoworca. NanoHttpd copyright: (c) 2012–2013 Paul S. Hawke; 2001, 2005–2013 Jarno Elonen; 2010 Konstantinos Togias. The exact upstream notice is retained in the linked license file.
 
-For source redistribution, retain the copyright notices, license conditions, and disclaimers. For JAR/APK or other binary redistribution, reproduce them in the documentation and/or other materials supplied with the distribution—for example, an app's open-source licenses screen or bundled license files. Include both license texts and the attribution notice; a project link alone does not reproduce the required notices. The current JAR tasks do not bundle these files automatically, so include them in your distribution materials. TinyHttpd does not claim endorsement by the NanoHttpd organization or its contributors.
+For source redistribution, retain the copyright notices, license conditions, and disclaimers. For JAR/APK or other binary redistribution, reproduce them in the documentation and/or other materials supplied with the distribution—for example, an app's open-source licenses screen or bundled license files. Include both license texts and the attribution notice; a project link alone does not reproduce the required notices. Library JARs include these notices under `META-INF/`; preserve them when repackaging and include them in your application's distribution materials. TinyHttpd does not claim endorsement by the NanoHttpd organization or its contributors.
 
 ---
 
@@ -162,7 +166,7 @@ TinyHttpd는 메모리 사용량 관리와 안정적인 대용량 파일 스트�
 - **HTTP와 실시간 연결.** HTTP/1.1 keep-alive, 청크 전송, SSE, 선택 모듈의 WebSocket, 설정 가능한 TLS를 제공합니다. SSE와 업그레이드 연결은 별도의 연결 예산으로 관리합니다.
 - **호환성과 입력 검사.** Java 8 바이트코드와 Android 5.0/API 21 API 검사를 적용합니다. 엄격한 요청 파싱, 설정 가능한 요청 제한, 기본 활성화된 Host 허용 목록을 제공합니다.
 
-현재 버전은 `0.1.0-SNAPSHOT`입니다. Android API 호환성은 빌드에서 검사하며, 실기기 검증 계획은 아직 진행 전입니다. 메모리 목표치와 벤치마크 결과는 환경·작업 부하에 따라 달라집니다. [측정 자료](docs/research/baseline.md)와 [Android 검증 계획](docs/next/p10-android-verification.md)을 참고하세요.
+현재 버전은 `3.0.0`입니다. Android API 호환성은 빌드에서 검사하며, 실기기 검증 계획은 아직 진행 전입니다. 메모리 목표치와 벤치마크 결과는 환경·작업 부하에 따라 달라집니다. [측정 자료](docs/research/baseline.md)와 [Android 검증 계획](docs/next/p10-android-verification.md)을 참고하세요.
 
 ### 모듈
 
@@ -173,6 +177,10 @@ TinyHttpd는 메모리 사용량 관리와 안정적인 대용량 파일 스트�
 | `tinyhttpd-websocket` | [websocket/](websocket/) | WebSocket 핸들러와 연결 |
 | `tinyhttpd-router` | [router/](router/) | HTTP 메서드·경로 라우팅, 핸들러 마운트 |
 | `tinyhttpd-session` | [session/](session/) | 선택형 메모리 세션과 CSRF 필터 |
+
+### 다운로드
+
+[GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.0.0)에서 바이너리·소스·Javadoc JAR를 받을 수 있습니다. 선택 모듈을 사용할 때는 코어 JAR도 필요합니다. 변경 사항과 이식 안내는 [릴리스 노트](CHANGELOG.md)를 참고하세요.
 
 ### 간단한 튜토리얼
 
@@ -215,8 +223,8 @@ public final class HelloServer {
 **3. 컴파일하고 실행합니다.**
 
 ```bash
-javac --release 8 -cp core/build/libs/tinyhttpd-core-0.1.0-SNAPSHOT.jar HelloServer.java
-java -cp ".:core/build/libs/tinyhttpd-core-0.1.0-SNAPSHOT.jar" HelloServer
+javac --release 8 -cp core/build/libs/tinyhttpd-core-3.0.0.jar HelloServer.java
+java -cp ".:core/build/libs/tinyhttpd-core-3.0.0.jar" HelloServer
 ```
 
 다른 터미널에서 요청합니다.
@@ -231,7 +239,7 @@ curl --fail http://127.0.0.1:8080/
 **4. 정적 파일 서버를 실행합니다.** 앞의 서버를 종료한 뒤 실행하세요.
 
 ```bash
-java -cp "core/build/libs/tinyhttpd-core-0.1.0-SNAPSHOT.jar:webserver/build/libs/tinyhttpd-webserver-0.1.0-SNAPSHOT.jar" \
+java -cp "core/build/libs/tinyhttpd-core-3.0.0.jar:webserver/build/libs/tinyhttpd-webserver-3.0.0.jar" \
   com.snoworca.tinyhttpd.webserver.SimpleWebServer \
   -h 127.0.0.1 -p 8080 -d docs --listing
 ```
@@ -280,4 +288,4 @@ TinyHttpd는 **BSD 3-Clause License**로 배포합니다. [LICENSE](LICENSE), [N
 
 TinyHttpd 저작권: (c) 2026, Snoworca. NanoHttpd 원저작자: (c) 2012–2013 Paul S. Hawke, 2001·2005–2013 Jarno Elonen, 2010 Konstantinos Togias. 정확한 원문 저작권 고지는 연결된 라이선스 파일에 보존되어 있습니다.
 
-소스를 재배포할 때는 저작권 고지·라이선스 조건·면책 조항을 유지해야 합니다. JAR·APK 등 바이너리를 재배포할 때는 배포물과 함께 제공하는 문서 또는 기타 자료에 해당 내용을 포함해야 합니다. 앱의 오픈소스 라이선스 화면이나 동봉한 라이선스 파일을 사용할 수 있습니다. 두 라이선스 전문과 출처 고지를 함께 제공하세요. 프로젝트 링크만으로 필수 고지 내용을 대신할 수는 없습니다. 현재 JAR 빌드 작업은 이 파일들을 자동으로 포함하지 않으므로 배포 자료에 별도로 넣어야 합니다. TinyHttpd는 NanoHttpd 조직이나 기여자의 보증·추천을 주장하지 않습니다.
+소스를 재배포할 때는 저작권 고지·라이선스 조건·면책 조항을 유지해야 합니다. JAR·APK 등 바이너리를 재배포할 때는 배포물과 함께 제공하는 문서 또는 기타 자료에 해당 내용을 포함해야 합니다. 앱의 오픈소스 라이선스 화면이나 동봉한 라이선스 파일을 사용할 수 있습니다. 두 라이선스 전문과 출처 고지를 함께 제공하세요. 프로젝트 링크만으로 필수 고지 내용을 대신할 수는 없습니다. 라이브러리 JAR의 `META-INF/`에 이 고지 파일들이 포함됩니다. 재패키징할 때도 보존하고 앱 배포 자료에 포함하세요. TinyHttpd는 NanoHttpd 조직이나 기여자의 보증·추천을 주장하지 않습니다.

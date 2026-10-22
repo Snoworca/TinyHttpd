@@ -25,3 +25,12 @@ target
 .claude/
 .codex/
 .mcp.json
+
+# Local publishing credentials
+/publish.properties
+/.publish/
+/signing/
+/signing*.zip
+/*.gpg
+/*.asc
+/publish*.properties
