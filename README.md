@@ -35,6 +35,48 @@ The current version is `3.0.0`. Android API compatibility is checked during the 
 | `tinyhttpd-router` | [router/](router/) | Method/path routing and mounted handlers |
 | `tinyhttpd-session` | [session/](session/) | Optional in-memory sessions and CSRF filter |
 
+### Add with Gradle
+
+All five modules are available from Maven Central. Add the core dependency and keep only the optional modules your application needs. Gradle resolves each optional module's core dependency automatically.
+
+**Kotlin DSL — `build.gradle.kts`:**
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("com.snoworca:tinyhttpd-core:3.0.0")
+
+    // Optional modules
+    implementation("com.snoworca:tinyhttpd-webserver:3.0.0")
+    implementation("com.snoworca:tinyhttpd-websocket:3.0.0")
+    implementation("com.snoworca:tinyhttpd-router:3.0.0")
+    implementation("com.snoworca:tinyhttpd-session:3.0.0")
+}
+```
+
+**Groovy DSL — `build.gradle`:**
+
+```groovy
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.snoworca:tinyhttpd-core:3.0.0'
+
+    // Optional modules
+    implementation 'com.snoworca:tinyhttpd-webserver:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-router:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-session:3.0.0'
+}
+```
+
+These blocks belong in your application's module build file. If your project manages repositories centrally, put `mavenCentral()` in `settings.gradle(.kts)` under `dependencyResolutionManagement.repositories` instead of adding a module-level `repositories` block. For Android, set `minSdk` to 21 or later and enable Java 8 language support.
+
 ### Downloads
 
 Download binary, sources, and Javadoc JARs from [GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.0.0). Each optional module requires the core JAR. See the [release notes](CHANGELOG.md) for changes and migration notes.
@@ -51,7 +93,7 @@ cd TinyHttpd
 ./gradlew build
 ```
 
-The commands below use locally built JARs; a public artifact repository is not configured in this checkout.
+The commands below use locally built JARs. Applications can instead use the Maven Central dependencies shown above.
 
 **2. Save this as `HelloServer.java` in the repository root.**
 
@@ -178,6 +220,48 @@ TinyHttpd는 메모리 사용량 관리와 안정적인 대용량 파일 스트�
 | `tinyhttpd-router` | [router/](router/) | HTTP 메서드·경로 라우팅, 핸들러 마운트 |
 | `tinyhttpd-session` | [session/](session/) | 선택형 메모리 세션과 CSRF 필터 |
 
+### Gradle 의존성 추가
+
+5개 모듈 모두 Maven Central에서 받을 수 있습니다. 코어 의존성을 추가하고 필요한 선택 모듈만 남기세요. 선택 모듈의 코어 의존성은 Gradle이 자동으로 가져옵니다.
+
+**Kotlin DSL — `build.gradle.kts`:**
+
+```kotlin
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("com.snoworca:tinyhttpd-core:3.0.0")
+
+    // Optional modules
+    implementation("com.snoworca:tinyhttpd-webserver:3.0.0")
+    implementation("com.snoworca:tinyhttpd-websocket:3.0.0")
+    implementation("com.snoworca:tinyhttpd-router:3.0.0")
+    implementation("com.snoworca:tinyhttpd-session:3.0.0")
+}
+```
+
+**Groovy DSL — `build.gradle`:**
+
+```groovy
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.snoworca:tinyhttpd-core:3.0.0'
+
+    // Optional modules
+    implementation 'com.snoworca:tinyhttpd-webserver:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-router:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-session:3.0.0'
+}
+```
+
+위 설정은 사용하는 앱의 모듈 빌드 파일에 추가합니다. 저장소를 중앙에서 관리하는 프로젝트라면 모듈에 `repositories` 블록을 추가하는 대신 `settings.gradle(.kts)`의 `dependencyResolutionManagement.repositories`에 `mavenCentral()`을 넣으세요. Android에서는 `minSdk`를 21 이상으로 설정하고 Java 8 언어 지원을 활성화하세요.
+
 ### 다운로드
 
 [GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.0.0)에서 바이너리·소스·Javadoc JAR를 받을 수 있습니다. 선택 모듈을 사용할 때는 코어 JAR도 필요합니다. 변경 사항과 이식 안내는 [릴리스 노트](CHANGELOG.md)를 참고하세요.
@@ -194,7 +278,7 @@ cd TinyHttpd
 ./gradlew build
 ```
 
-아래 예제는 로컬에서 빌드한 JAR를 사용합니다. 현재 체크아웃에는 공개 아티팩트 저장소 배포 설정이 없습니다.
+아래 예제는 로컬에서 빌드한 JAR를 사용합니다. 앱에서는 위의 Maven Central 의존성으로 대신 사용할 수 있습니다.
 
 **2. 저장소 루트에 `HelloServer.java`를 만듭니다.**
 
