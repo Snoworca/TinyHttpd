@@ -29,7 +29,10 @@ public interface Response {
     /**
      * Replaces all values of a header. Ignored after the commit. {@code Content-Length} maps to
      * {@link #setContentLengthLong}, {@code Connection: close} to {@link #setCloseConnection}; {@code Transfer-Encoding}
-     * is rejected and {@code Date}/{@code Keep-Alive} are managed by the server.
+     * is rejected and {@code Date}/{@code Keep-Alive} are managed by the server. {@code Connection: Upgrade} is sent
+     * (as {@code Upgrade}, {@code Upgrade, close} or {@code Upgrade, keep-alive}) only when the same response also
+     * has an {@code Upgrade} header and a status other than 101, for example a 426 offer; every other
+     * {@code Connection} value is ignored.
      *
      * @param name header name (token characters)
      * @param value header value; null removes the header

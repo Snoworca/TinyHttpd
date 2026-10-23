@@ -75,6 +75,11 @@ public class RequestWrapper implements Request {
     public Collection<String> getHeaderNames() {
         return wrapped.getHeaderNames();
     }
+
+    @Override
+    public java.util.List<java.util.Map.Entry<String, String>> getHeaderEntries() {
+        return wrapped.getHeaderEntries();
+    }
     @Override
     public long getDateHeader(String name) {
         return wrapped.getDateHeader(name);

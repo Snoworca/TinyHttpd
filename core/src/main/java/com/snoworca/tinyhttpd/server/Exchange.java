@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.Charset;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -203,6 +204,16 @@ final class Exchange implements Request {
             }
         }
         return seen;
+    }
+
+    @Override
+    public List<Map.Entry<String, String>> getHeaderEntries() {
+        int n = headerNames.size();
+        List<Map.Entry<String, String>> out = new ArrayList<Map.Entry<String, String>>(n);
+        for (int i = 0; i < n; i++) {
+            out.add(new AbstractMap.SimpleImmutableEntry<String, String>(headerNames.get(i), headerValues.get(i)));
+        }
+        return Collections.unmodifiableList(out);
     }
 
     @Override

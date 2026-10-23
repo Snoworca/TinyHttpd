@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- `Request.getHeaderEntries()` (default method): every request header occurrence in received order, duplicates kept at their own positions, names as sent. `RequestWrapper` delegates it.
+- A non-101 response whose handler sets `Upgrade` and `Connection: Upgrade` now sends `Connection: Upgrade` (`Upgrade, close` / `Upgrade, keep-alive` when the connection state is also announced), so a 426 answer is a valid upgrade offer. Without an `Upgrade` header, `Connection` values other than `close` are still ignored.
+
 ## 3.0.0 - 2026-10-22
 
 ## English

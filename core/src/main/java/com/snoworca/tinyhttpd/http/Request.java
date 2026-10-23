@@ -2,7 +2,10 @@ package com.snoworca.tinyhttpd.http;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -63,6 +66,26 @@ public interface Request {
 
     /** @return distinct header names in order of first appearance */
     Collection<String> getHeaderNames();
+
+    /**
+     * Every header occurrence once, in the order received: a name that appears twice appears twice, each at its own
+     * position, spelled as the client sent it. Unlike {@link #getHeaders} and {@link #getHeaderNames}, which group by
+     * name, this keeps the interleaving that a proxy or gateway must forward.
+     * <p>
+     * An implementation that does not override this method answers with the occurrences grouped by
+     * {@link #getHeaderNames()} order, because it has no other order to give.
+     *
+     * @return a read-only list of read-only entries; never null
+     */
+    default List<Map.Entry<String, String>> getHeaderEntries() {
+        List<Map.Entry<String, String>> out = new ArrayList<Map.Entry<String, String>>();
+        for (String name : getHeaderNames()) {
+            for (String value : getHeaders(name)) {
+                out.add(new AbstractMap.SimpleImmutableEntry<String, String>(name, value));
+            }
+        }
+        return Collections.unmodifiableList(out);
+    }
 
     /**
      * @param name header name

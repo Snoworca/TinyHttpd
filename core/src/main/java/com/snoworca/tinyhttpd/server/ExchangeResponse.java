@@ -48,6 +48,9 @@ final class ExchangeResponse implements Response {
 
     boolean closeRequested;
 
+    /** The handler set {@code Connection: Upgrade}; sent only beside an {@code Upgrade} header of a non-101 response. */
+    private boolean upgradeToken;
+
     private int mode = MODE_NONE;
 
     private Writer writer;
@@ -170,9 +173,15 @@ final class ExchangeResponse implements Response {
             throw new IllegalArgumentException("Transfer-Encoding is managed by the server");
         }
         if (name.equalsIgnoreCase("Connection")) {
-            if (value != null && Ascii.hasToken(java.util.Collections.singletonList(value), "close")) {
+            boolean close = value != null && Ascii.hasToken(java.util.Collections.singletonList(value), "close");
+            boolean upgrade = value != null && Ascii.hasToken(java.util.Collections.singletonList(value), "upgrade");
+            if (close) {
                 closeRequested = true;
-            } else {
+            }
+            if (upgrade) {
+                upgradeToken = true;
+            }
+            if (!close && !upgrade) {
                 ignored("Connection: " + value);
             }
             return true;
@@ -423,6 +432,19 @@ final class ExchangeResponse implements Response {
 
     // ------------------------------------------------------------------ framing
 
+    /** Whether the handler asked for {@code Connection: Upgrade} and this non-101 response has an {@code Upgrade} header. */
+    private boolean offersUpgrade() {
+        if (!upgradeToken || status == 101) {
+            return false;
+        }
+        for (int i = 0; i < names.size(); i++) {
+            if (names.get(i).equalsIgnoreCase("Upgrade")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean bodyless() {
         return status < 200 || status == 204 || status == 205 || status == 304 || ex.isHead();
     }
@@ -463,11 +485,16 @@ final class ExchangeResponse implements Response {
         } else if (chunked) {
             sb.append("Transfer-Encoding: chunked\r\n");
         }
+        // RFC 7230 6.7: a sender of Upgrade also sends Connection: Upgrade, so a 426 offer stays a valid offer
+        String upgrade = offersUpgrade() ? "Upgrade, " : "";
         if (!keepAlive) {
-            sb.append("Connection: close\r\n");
+            sb.append("Connection: ").append(upgrade).append("close\r\n");
         } else if (!ex.isHttp11()) {
             int idle = server.isUnderLoad() ? server.config.getIdleTimeoutUnderLoad() : server.config.getIdleTimeout();
-            sb.append("Connection: keep-alive\r\nKeep-Alive: timeout=").append(Math.max(1, idle / 1000)).append("\r\n");
+            sb.append("Connection: ").append(upgrade).append("keep-alive\r\nKeep-Alive: timeout=")
+                    .append(Math.max(1, idle / 1000)).append("\r\n");
+        } else if (!upgrade.isEmpty()) {
+            sb.append("Connection: Upgrade\r\n");
         }
         sb.append("\r\n");
         return sb.toString().getBytes(Ascii.UTF8);
