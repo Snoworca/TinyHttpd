@@ -1,0 +1,261 @@
+{
+  "version": "3.1.0",
+  "status": "verified",
+  "artifacts": [
+    {
+      "path": "com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0.jar",
+      "sha256": "78d18ed556ca5a846bb5b9001d33d53216357947841bb7e2d1ff6c5c8151f225",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0-sources.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0-sources.jar",
+      "sha256": "fca3091447744203402beb438600727f21a576d80a0dda00de41255c88cacbbd",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0-javadoc.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0-javadoc.jar",
+      "sha256": "b05fa2f8ef65df417d1e9f5768a6e4505ce881f0f04570722fc731649aff6243",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0.pom",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-core/3.1.0/tinyhttpd-core-3.1.0.pom",
+      "sha256": "3cd04b17095da230a64260a7fe92c1023d91ad812338429c3588db294b578295",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0.jar",
+      "sha256": "d81db3bfae9ff72d0772831017472bff7d6f40ffd01fca30db3ce0b59e0f1eb8",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0-sources.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0-sources.jar",
+      "sha256": "8aae618f0b3090fc01a833fae3755b88524c44fe53d0061baf976d9b9a4e8ac5",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0-javadoc.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0-javadoc.jar",
+      "sha256": "69fb8e63ddb0875d0044d0c81ea24ff97d1eb7fdaebfef85bb0473402c5c91ec",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0.pom",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-webserver/3.1.0/tinyhttpd-webserver-3.1.0.pom",
+      "sha256": "88c7feecf284647cceacdebd2e74e83df9e0e8b43a858636ed0f7d20ad7ed50d",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0.jar",
+      "sha256": "996e07309990e1a3ca3ca9ff899c166869a75af41c27dcacddf07222335c6804",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0-sources.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0-sources.jar",
+      "sha256": "a408b5ee61342d93cf53747c6babd258de7af90d6438f00895aff48304111da6",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0-javadoc.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0-javadoc.jar",
+      "sha256": "8a460663d7d082784b63d89f583d0bd614f635df01680e01ab36cff2a5cc005e",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0.pom",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-websocket/3.1.0/tinyhttpd-websocket-3.1.0.pom",
+      "sha256": "43e8cd1961470f28103aa6c5c550b2f169f54cdbf3ddc44ba5b1390772ad7385",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0.jar",
+      "sha256": "e743499acba1dc85d78386e3f4a41525bb51942c704e1df620f17dba0da4514f",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0-sources.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0-sources.jar",
+      "sha256": "b237d8fd1095b155f2acd3e661b57672bb55111a2c313b85d78c1918b24cd4e6",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0-javadoc.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0-javadoc.jar",
+      "sha256": "ba43f6137ead4c0372ed39366ea57adec173c5f31be5e49d024c04c7626107e9",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0.pom",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-router/3.1.0/tinyhttpd-router-3.1.0.pom",
+      "sha256": "5201245d1f9cb0d3759ef832ab95e1f1a52e47201856a0b1bdd49704598fcfe7",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0.jar",
+      "sha256": "9119768888b8b44a934aa00f335a1bb1ab7b2dc417949fea837696fe11a80469",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0-sources.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0-sources.jar",
+      "sha256": "e8c3f6878279c9e83006f1f059edd89ff8604bec8e4c03b87b0cd54ee3265f57",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0-javadoc.jar",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0-javadoc.jar",
+      "sha256": "5067f1f12ce42b06014d36e971c3679366179548080233ee17f5ce0323948de7",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    },
+    {
+      "path": "com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0.pom",
+      "url": "https://repo.maven.apache.org/maven2/com/snoworca/tinyhttpd-session/3.1.0/tinyhttpd-session-3.1.0.pom",
+      "sha256": "167da2f916150bccf3deab0aefb4c56b510d11400243b974cf56df6b7ef7717d",
+      "signatureMatches": true,
+      "checksums": [
+        "md5",
+        "sha1",
+        "sha256",
+        "sha512"
+      ]
+    }
+  ],
+  "sourceCommit": "165f365",
+  "gitTag": "v3.1.0",
+  "githubRelease": "https://github.com/Snoworca/TinyHttpd/releases/tag/v3.1.0",
+  "githubAssetCount": 19,
+  "githubChecksumsVerified": 18,
+  "binaryConsumer": {
+    "repository": "NaruServe",
+    "coordinates": "com.snoworca.naruserve:NaruServe-tinyhttpd:0.1.0-SNAPSHOT",
+    "result": "passed against published TinyHttpd 3.1.0 JARs without includeBuild",
+    "checks": [
+      "core and websocket JAR origins",
+      "received header order and duplicates",
+      "GET and HEAD transport cancellation"
+    ]
+  }
+}
