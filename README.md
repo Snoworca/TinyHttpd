@@ -176,6 +176,9 @@ Use API 21 or later and declare `android.permission.INTERNET` in the host app. S
 
 ### Documentation
 
+- [English user guide](docs/guide/en.md) · [한국어 사용 가이드](docs/guide/ko.md)
+- [Guide language index](docs/guide/README.md)
+- [Servlet API differences (English)](docs/api/servlet-differences.en.md)
 - [API differences from Servlet](docs/api/servlet-differences.md)
 - [Development roadmap](docs/next/README.md)
 - [Research and measurements](docs/research/)
@@ -361,6 +364,8 @@ API 21 이상을 사용하고 호스트 앱에 `android.permission.INTERNET`을 
 
 ### 문서
 
+- [한국어 사용 가이드](docs/guide/ko.md) · [English user guide](docs/guide/en.md)
+- [가이드 언어 선택](docs/guide/README.md)
 - [Servlet API와 다른 점](docs/api/servlet-differences.md)
 - [개발 로드맵](docs/next/README.md)
 - [연구와 측정 자료](docs/research/)
