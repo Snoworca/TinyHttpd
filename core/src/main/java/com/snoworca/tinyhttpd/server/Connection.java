@@ -85,6 +85,10 @@ final class Connection {
     /** The connection must close after the current response. */
     boolean mustClose;
 
+    // FR-HTTP-003: only response activation/retirement and cancellation take this lock, never socket I/O.
+    private final Object responseLock = new Object();
+    private ExchangeResponse activeResponse;
+
     /** Time spent waiting on the client for this request's body, and the body bytes that arrived meanwhile. */
     private long bodyWaitMillis;
 
@@ -189,8 +193,14 @@ final class Connection {
             server.requests.incrementAndGet();
             setPhase(HANDLING);
             ExchangeResponse res = new ExchangeResponse(this, ex);
+            synchronized (responseLock) {
+                activeResponse = res;
+            }
             try {
                 dispatch(ex, res);
+                if (res.aborted) {
+                    return;
+                }
                 if (upgraded != null) {
                     mustClose = true;
                     return;
@@ -208,7 +218,13 @@ final class Connection {
                     mustClose = true;
                 }
             } finally {
+                synchronized (responseLock) {
+                    activeResponse = null;
+                }
                 res.releaseBuffer();
+            }
+            if (res.aborted) {
+                return;
             }
             if (!res.keepAlive || mustClose || server.isStopping()) {
                 if (!res.broken) {
@@ -354,6 +370,9 @@ final class Connection {
 
     private void ioFailure(Exchange ex, ExchangeResponse res, IOException e) {
         mustClose = true;
+        if (res.aborted) {
+            return;
+        }
         if (res.broken || writeTimedOut) {
             if (server.log.isLoggable(Level.FINE)) {
                 server.log.log(Level.FINE, "client gone: " + e, null);
@@ -374,6 +393,9 @@ final class Connection {
     }
 
     private void error(ExchangeResponse res, int status, String message, List<String> headers, Throwable cause) {
+        if (res.aborted) {
+            return;
+        }
         if (cause != null) {
             server.log.log(Level.SEVERE, "handler failed: " + res.ex, cause);
         }
@@ -459,6 +481,23 @@ final class Connection {
     /** Closes the plain socket from another thread; never blocks (no TLS close_notify). */
     void abortSocket() {
         HttpServer.closeQuietly(raw);
+    }
+
+    /** Cancels only the still-active response; no socket write or response buffer lock is acquired. */
+    // @req FR-HTTP-003
+    void abortResponse(ExchangeResponse response) {
+        synchronized (responseLock) {
+            if (activeResponse != response) {
+                return;
+            }
+            response.aborted = true;
+            phase.set(CLOSING); // prevents keep-alive reuse before the raw close below
+        }
+        abortSocket();
+        SseStream stream = eventStream;
+        if (stream != null) {
+            stream.close(); // wakes an owner waiting for queued events rather than blocked in socket I/O
+        }
     }
 
     /**

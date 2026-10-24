@@ -1,9 +1,32 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 - 2026-10-24
 
-- `Request.getHeaderEntries()` (default method): every request header occurrence in received order, duplicates kept at their own positions, names as sent. `RequestWrapper` delegates it.
-- A non-101 response whose handler sets `Upgrade` and `Connection: Upgrade` now sends `Connection: Upgrade` (`Upgrade, close` / `Upgrade, keep-alive` when the connection state is also announced), so a 426 answer is a valid upgrade offer. Without an `Upgrade` header, `Connection` values other than `close` are still ignored.
+## English
+
+TinyHttpd 3.1.0 adds the published contracts required by the NaruServe adapter. It preserves the immutable 3.0.0 release.
+
+- `Request.getHeaderEntries()` exposes every header in received order, preserving duplicate names and their original case. Wrappers delegate it; the default implementation keeps older Request implementations compatible.
+- A non-101 response with `Upgrade` and `Connection: Upgrade` now preserves the upgrade offer, including HTTP 426 responses.
+- `Response.abort()` cancels the active connection without sending a synthetic error response or completing the body. It supports GET and HEAD, wakes blocked writers, closes SSE owners, and prevents reuse of the cancelled connection. Aborting a completed response does not cancel the next request on a reused connection.
+- Body streams and Writers reject writes and flushes after cancellation. `ResponseWrapper` delegates abort; older custom Response implementations inherit a default method that throws `UnsupportedOperationException`.
+
+Use `com.snoworca:tinyhttpd-core:3.1.0` and optional modules at the same version. Published 3.0.0 does not contain these new APIs. Java 8 bytecode and Android API 21 API checks remain in place; physical Android device verification remains pending.
+
+Downloads contain binary, sources and Javadoc JARs for all five modules, plus `SHA256SUMS` and license notices. TinyHttpd independently continues NanoHttpd; BSD 3-Clause and the original NanoHttpd notices remain included in every JAR. Preserve those notices when redistributing.
+
+## 한국어
+
+TinyHttpd 3.1.0은 NaruServe 어댑터에 필요한 계약을 정식 배포합니다. 기존 3.0.0 배포 파일은 변경하지 않습니다.
+
+- `Request.getHeaderEntries()`로 중복 헤더와 원래 이름 표기를 보존하면서 수신 순서대로 모든 헤더를 읽습니다. 래퍼는 호출을 전달하며 기본 메서드는 기존 Request 구현의 호환성을 유지합니다.
+- 101 이외의 응답에서 `Upgrade`와 `Connection: Upgrade`를 함께 지정하면 HTTP 426을 포함한 업그레이드 제안을 유지합니다.
+- `Response.abort()`는 오류 응답이나 바디 종료를 만들어 보내지 않고 활성 연결을 중단합니다. GET·HEAD, 막힌 쓰기 깨우기, SSE 소유자 종료를 지원하고 중단된 연결의 재사용을 막습니다. 완료된 응답을 중단해도 재사용 연결의 다음 요청은 취소되지 않습니다.
+- 중단 후 바디 스트림·Writer의 쓰기와 flush는 실패합니다. `ResponseWrapper`는 중단을 전달하며, 기존 사용자 정의 Response는 `UnsupportedOperationException`을 던지는 기본 메서드를 상속합니다.
+
+`com.snoworca:tinyhttpd-core:3.1.0`과 같은 버전의 선택 모듈을 사용하십시오. 기존에 배포한 3.0.0에는 새 API가 없습니다. Java 8 바이트코드와 Android API 21 API 검사를 유지하며, Android 실기기 검증은 아직 진행 전입니다.
+
+5개 모듈의 바이너리·소스·Javadoc JAR, `SHA256SUMS`, 라이선스 고지를 제공합니다. TinyHttpd는 NanoHttpd를 독립적으로 계승·개선했으며 모든 JAR에 BSD 3-Clause 및 원본 NanoHttpd 고지를 포함합니다. 재배포 시 해당 고지를 보존하십시오.
 
 ## 3.0.0 - 2026-10-22
 

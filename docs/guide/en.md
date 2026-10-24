@@ -1,6 +1,6 @@
 [English](en.md) | [한국어](ko.md) | [README](../../README.md)
 
-# TinyHttpd 3.0.0 user guide
+# TinyHttpd 3.1.0 user guide
 
 Build a local HTTP service, then add forms, file transfer, SSE, WebSocket, sessions, and TLS. This guide targets Java developers embedding TinyHttpd in JVM or Android applications. Commands use Bash on macOS/Linux; JDK 17 and an internet connection are required for the walkthrough. The library uses Java 8 bytecode and checks its platform APIs against Android API 21. Physical-device validation remains pending.
 
@@ -8,7 +8,7 @@ TinyHttpd independently continues NanoHttpd from development commit `efb2ebf` (`
 
 ## 1. Install and choose modules
 
-All coordinates use group `com.snoworca` and version `3.0.0` on Maven Central. Optional modules bring the core transitively. The walkthrough uses all five; a minimal server needs only `tinyhttpd-core`.
+All coordinates use group `com.snoworca` and version `3.1.0` on Maven Central. Optional modules bring the core transitively. The walkthrough uses all five; a minimal server needs only `tinyhttpd-core`.
 
 | Module | Provides |
 |---|---|
@@ -38,11 +38,11 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.snoworca:tinyhttpd-core:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-router:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-webserver:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-websocket:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-session:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-core:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-router:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-webserver:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-session:3.1.0'
 }
 
 java {
@@ -304,6 +304,8 @@ Builder timeout setters use milliseconds. Use `TinyHttpd.UNLIMITED` or `UNLIMITE
 
 The builder normally creates daemon threads. This JVM program uses `daemon(false)` to keep the process alive. `start()` binds on the calling thread; `stop()` waits for the configured shutdown grace and may block. Start/stop on a lifecycle executor in UI applications and call stop when the host is finished. Memory consumption and throughput depend on configuration and platform; see [measurement notes](../research/baseline.md).
 
+`Response.abort()` cancels the active transport immediately, including GET and HEAD, without fabricating an error response or completing a chunked body. It is thread safe and can wake a blocked writer. Writes and flushes through either the body stream or Writer fail after cancellation; a completed response cannot cancel a subsequent request on a reused connection. `ResponseWrapper` forwards cancellation. The default on a legacy custom Response throws UnsupportedOperationException.
+
 ## 7. Enable HTTPS
 
 Use a server TLS key/certificate, separate from the PGP key used to sign Maven releases. For a local-only test, create a 30-day self-signed certificate and export its public certificate. `keytool` prompts for a keystore password; reuse it for the environment variable. Keep the private keystore out of Git.
@@ -381,7 +383,7 @@ If an Android app is also an HTTP client, its cleartext/TLS policy is separate f
 
 ## 9. Migrate from NanoHttpd
 
-| NanoHttpd pattern | TinyHttpd 3.0.0 |
+| NanoHttpd pattern | TinyHttpd 3.1.0 |
 |---|---|
 | Subclass the server and override `serve(...)` | Build `TinyHttpd` with a `Handler`, optionally a `Router` |
 | `newFixedLengthResponse(...)` | Set status/type, then write to `Response.getWriter()` or `getOutputStream()` |
@@ -390,7 +392,7 @@ If an Android app is also an HTTP client, its cleartext/TLS policy is separate f
 | Intercept requests | Register `Filter` implementations and call `chain.doFilter(...)` to continue |
 | Whole-file buffering | `StaticFileHandler`, `FileResponses.serve(...)`, or `Response.sendFile(...)` |
 
-The core is not a Servlet container and does not require a servlet JAR. See [Servlet API differences](../api/servlet-differences.en.md) for request parameters, charset defaults, and unavailable container features. Version 3.0.0 belongs to TinyHttpd and does not claim to be an upstream NanoHttpd release.
+The core is not a Servlet container and does not require a servlet JAR. See [Servlet API differences](../api/servlet-differences.en.md) for request parameters, charset defaults, and unavailable container features. Version 3.1.0 belongs to TinyHttpd and does not claim to be an upstream NanoHttpd release.
 
 ## 10. Troubleshoot and redistribute
 

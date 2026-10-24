@@ -1,6 +1,6 @@
 [English](en.md) | [한국어](ko.md) | [README](../../README.md)
 
-# TinyHttpd 3.0.0 사용 가이드
+# TinyHttpd 3.1.0 사용 가이드
 
 로컬 HTTP 서비스를 만든 뒤 폼, 파일 전송, SSE, WebSocket, 세션, TLS를 추가합니다. JVM·Android 앱에 TinyHttpd를 탑재하려는 Java 개발자를 위한 문서입니다. 명령은 macOS/Linux의 Bash 기준이며 JDK 17과 인터넷 연결이 필요합니다. 라이브러리는 Java 8 바이트코드를 사용하고 Android API 21 시그니처로 API 호환성을 검사합니다. Android 실기기 검증은 아직 진행 전입니다.
 
@@ -8,7 +8,7 @@ TinyHttpd는 NanoHttpd의 개발 커밋 `efb2ebf`(`2.3.2-SNAPSHOT`, 2019-07-03)�
 
 ## 1. 설치와 모듈 선택
 
-Maven Central에서 groupId `com.snoworca`, 버전 `3.0.0`으로 제공합니다. 선택 모듈은 코어를 전이 의존성으로 가져옵니다. 이 예제는 5개 모듈을 모두 사용하며, 최소 서버에는 `tinyhttpd-core`만 있으면 됩니다.
+Maven Central에서 groupId `com.snoworca`, 버전 `3.1.0`으로 제공합니다. 선택 모듈은 코어를 전이 의존성으로 가져옵니다. 이 예제는 5개 모듈을 모두 사용하며, 최소 서버에는 `tinyhttpd-core`만 있으면 됩니다.
 
 | 모듈 | 기능 |
 |---|---|
@@ -38,11 +38,11 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.snoworca:tinyhttpd-core:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-router:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-webserver:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-websocket:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-session:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-core:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-router:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-webserver:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-session:3.1.0'
 }
 
 java {
@@ -304,6 +304,8 @@ CSRF 필터는 상태를 바꾸는 메서드에서 같은 출처·허용 출처�
 
 빌더는 기본으로 데몬 스레드를 만듭니다. JVM 예제는 프로세스를 유지하기 위해 `daemon(false)`를 사용합니다. `start()`는 호출 스레드에서 바인딩하고 `stop()`은 설정된 정상 종료 시간을 기다려 호출 스레드를 막을 수 있습니다. UI 앱에서는 생명주기용 실행기에서 시작·종료하고 호스트가 끝날 때 stop을 호출하세요. 메모리·처리량은 설정과 플랫폼에 따라 달라집니다. [측정 자료](../research/baseline.md)를 참고하세요.
 
+`Response.abort()`는 GET·HEAD를 포함한 활성 연결을 즉시 중단하며 오류 응답이나 청크 종료를 만들어 보내지 않습니다. 다른 스레드에서도 호출할 수 있고 막힌 쓰기를 깨웁니다. 중단 후 바디 스트림·Writer의 쓰기와 flush는 실패하며, 완료된 응답으로 재사용 연결의 다음 요청을 취소할 수는 없습니다. `ResponseWrapper`도 중단을 전달합니다. 과거 사용자 정의 Response의 기본 구현은 UnsupportedOperationException을 던집니다.
+
 ## 7. HTTPS 활성화
 
 서버 TLS 키·인증서는 Maven 배포에 서명하는 PGP 키와 별개입니다. 로컬 테스트에서는 30일 유효한 자체 서명 인증서를 만들고 공개 인증서를 내보냅니다. `keytool`이 키스토어 암호를 물으면 입력하고, 환경 변수에도 같은 암호를 넣으세요. 비밀 키스토어는 Git에 넣지 마세요.
@@ -381,7 +383,7 @@ Android 앱이 HTTP 클라이언트도 포함한다면 그 앱의 평문·TLS �
 
 ## 9. NanoHttpd에서 이식
 
-| NanoHttpd 사용 방식 | TinyHttpd 3.0.0 |
+| NanoHttpd 사용 방식 | TinyHttpd 3.1.0 |
 |---|---|
 | 서버를 상속하고 `serve(...)` 재정의 | `Handler`와 필요 시 `Router`를 지정해 서버 구성 |
 | `newFixedLengthResponse(...)` | 상태·타입을 지정하고 `Response.getWriter()` 또는 `getOutputStream()`에 쓰기 |
@@ -390,7 +392,7 @@ Android 앱이 HTTP 클라이언트도 포함한다면 그 앱의 평문·TLS �
 | 요청 가로채기 | `Filter`를 등록하고 계속 처리하려면 `chain.doFilter(...)` 호출 |
 | 파일 전체 버퍼링 | `StaticFileHandler`, `FileResponses.serve(...)`, `Response.sendFile(...)` 사용 |
 
-코어는 Servlet 컨테이너가 아니며 servlet JAR에 의존하지 않습니다. 파라미터·문자셋 기본값·제공하지 않는 컨테이너 기능은 [Servlet API와 다른 점](../api/servlet-differences.md)을 참고하세요. 3.0.0은 TinyHttpd의 버전이며 원본 NanoHttpd의 릴리스라고 주장하지 않습니다.
+코어는 Servlet 컨테이너가 아니며 servlet JAR에 의존하지 않습니다. 파라미터·문자셋 기본값·제공하지 않는 컨테이너 기능은 [Servlet API와 다른 점](../api/servlet-differences.md)을 참고하세요. 3.1.0은 TinyHttpd의 버전이며 원본 NanoHttpd의 릴리스라고 주장하지 않습니다.
 
 ## 10. 문제 해결과 재배포
 

@@ -27,6 +27,13 @@ public class ResponseWrapper implements Response {
         return wrapped;
     }
 
+    /** Delegates thread-safe transport cancellation. */
+    // @req FR-HTTP-003
+    @Override
+    public void abort() {
+        wrapped.abort();
+    }
+
     @Override
     public void setStatus(int status) {
         wrapped.setStatus(status);

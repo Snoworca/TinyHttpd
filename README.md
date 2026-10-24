@@ -23,7 +23,7 @@ A lightweight embedded HTTP server for Java and Android, built to keep memory us
 - **HTTP and live connections.** HTTP/1.1 keep-alive, chunked bodies, SSE, optional WebSocket support, and configurable TLS. SSE and upgraded connections have separate connection budgets.
 - **Compatibility and input checks.** Java 8 bytecode and Android 5.0/API 21 API checks, strict request parsing, configurable request limits, and a Host allowlist enabled by default.
 
-The current version is `3.0.0`. Android API compatibility is checked during the build; the physical-device validation plan remains open. Memory targets and benchmark results depend on the workload and platform. See the [measurement notes](docs/research/baseline.md) and [Android verification plan](docs/next/p10-android-verification.md).
+The current version is `3.1.0`. Android API compatibility is checked during the build; the physical-device validation plan remains open. Memory targets and benchmark results depend on the workload and platform. See the [measurement notes](docs/research/baseline.md) and [Android verification plan](docs/next/p10-android-verification.md).
 
 ### Modules
 
@@ -47,13 +47,13 @@ repositories {
 }
 
 dependencies {
-    implementation("com.snoworca:tinyhttpd-core:3.0.0")
+    implementation("com.snoworca:tinyhttpd-core:3.1.0")
 
     // Optional modules
-    implementation("com.snoworca:tinyhttpd-webserver:3.0.0")
-    implementation("com.snoworca:tinyhttpd-websocket:3.0.0")
-    implementation("com.snoworca:tinyhttpd-router:3.0.0")
-    implementation("com.snoworca:tinyhttpd-session:3.0.0")
+    implementation("com.snoworca:tinyhttpd-webserver:3.1.0")
+    implementation("com.snoworca:tinyhttpd-websocket:3.1.0")
+    implementation("com.snoworca:tinyhttpd-router:3.1.0")
+    implementation("com.snoworca:tinyhttpd-session:3.1.0")
 }
 ```
 
@@ -65,13 +65,13 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.snoworca:tinyhttpd-core:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-core:3.1.0'
 
     // Optional modules
-    implementation 'com.snoworca:tinyhttpd-webserver:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-websocket:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-router:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-session:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-webserver:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-router:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-session:3.1.0'
 }
 ```
 
@@ -79,7 +79,7 @@ These blocks belong in your application's module build file. If your project man
 
 ### Downloads
 
-Download binary, sources, and Javadoc JARs from [GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.0.0). Each optional module requires the core JAR. See the [release notes](CHANGELOG.md) for changes and migration notes.
+Download binary, sources, and Javadoc JARs from [GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.1.0). Each optional module requires the core JAR. See the [release notes](CHANGELOG.md) for changes and migration notes.
 
 ### Quick tutorial
 
@@ -122,8 +122,8 @@ public final class HelloServer {
 **3. Compile and start it.**
 
 ```bash
-javac --release 8 -cp core/build/libs/tinyhttpd-core-3.0.0.jar HelloServer.java
-java -cp ".:core/build/libs/tinyhttpd-core-3.0.0.jar" HelloServer
+javac --release 8 -cp core/build/libs/tinyhttpd-core-3.1.0.jar HelloServer.java
+java -cp ".:core/build/libs/tinyhttpd-core-3.1.0.jar" HelloServer
 ```
 
 In another terminal:
@@ -138,7 +138,7 @@ Press Ctrl+C in the server terminal to stop it. `.daemon(false)` keeps this stan
 **4. Try the static file server.** Stop the hello server first, then run:
 
 ```bash
-java -cp "core/build/libs/tinyhttpd-core-3.0.0.jar:webserver/build/libs/tinyhttpd-webserver-3.0.0.jar" \
+java -cp "core/build/libs/tinyhttpd-core-3.1.0.jar:webserver/build/libs/tinyhttpd-webserver-3.1.0.jar" \
   com.snoworca.tinyhttpd.webserver.SimpleWebServer \
   -h 127.0.0.1 -p 8080 -d docs --listing
 ```
@@ -211,7 +211,7 @@ TinyHttpd는 메모리 사용량 관리와 안정적인 대용량 파일 스트�
 - **HTTP와 실시간 연결.** HTTP/1.1 keep-alive, 청크 전송, SSE, 선택 모듈의 WebSocket, 설정 가능한 TLS를 제공합니다. SSE와 업그레이드 연결은 별도의 연결 예산으로 관리합니다.
 - **호환성과 입력 검사.** Java 8 바이트코드와 Android 5.0/API 21 API 검사를 적용합니다. 엄격한 요청 파싱, 설정 가능한 요청 제한, 기본 활성화된 Host 허용 목록을 제공합니다.
 
-현재 버전은 `3.0.0`입니다. Android API 호환성은 빌드에서 검사하며, 실기기 검증 계획은 아직 진행 전입니다. 메모리 목표치와 벤치마크 결과는 환경·작업 부하에 따라 달라집니다. [측정 자료](docs/research/baseline.md)와 [Android 검증 계획](docs/next/p10-android-verification.md)을 참고하세요.
+현재 버전은 `3.1.0`입니다. Android API 호환성은 빌드에서 검사하며, 실기기 검증 계획은 아직 진행 전입니다. 메모리 목표치와 벤치마크 결과는 환경·작업 부하에 따라 달라집니다. [측정 자료](docs/research/baseline.md)와 [Android 검증 계획](docs/next/p10-android-verification.md)을 참고하세요.
 
 ### 모듈
 
@@ -235,13 +235,13 @@ repositories {
 }
 
 dependencies {
-    implementation("com.snoworca:tinyhttpd-core:3.0.0")
+    implementation("com.snoworca:tinyhttpd-core:3.1.0")
 
     // Optional modules
-    implementation("com.snoworca:tinyhttpd-webserver:3.0.0")
-    implementation("com.snoworca:tinyhttpd-websocket:3.0.0")
-    implementation("com.snoworca:tinyhttpd-router:3.0.0")
-    implementation("com.snoworca:tinyhttpd-session:3.0.0")
+    implementation("com.snoworca:tinyhttpd-webserver:3.1.0")
+    implementation("com.snoworca:tinyhttpd-websocket:3.1.0")
+    implementation("com.snoworca:tinyhttpd-router:3.1.0")
+    implementation("com.snoworca:tinyhttpd-session:3.1.0")
 }
 ```
 
@@ -253,13 +253,13 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.snoworca:tinyhttpd-core:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-core:3.1.0'
 
     // Optional modules
-    implementation 'com.snoworca:tinyhttpd-webserver:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-websocket:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-router:3.0.0'
-    implementation 'com.snoworca:tinyhttpd-session:3.0.0'
+    implementation 'com.snoworca:tinyhttpd-webserver:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-router:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-session:3.1.0'
 }
 ```
 
@@ -267,7 +267,7 @@ dependencies {
 
 ### 다운로드
 
-[GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.0.0)에서 바이너리·소스·Javadoc JAR를 받을 수 있습니다. 선택 모듈을 사용할 때는 코어 JAR도 필요합니다. 변경 사항과 이식 안내는 [릴리스 노트](CHANGELOG.md)를 참고하세요.
+[GitHub Releases](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.1.0)에서 바이너리·소스·Javadoc JAR를 받을 수 있습니다. 선택 모듈을 사용할 때는 코어 JAR도 필요합니다. 변경 사항과 이식 안내는 [릴리스 노트](CHANGELOG.md)를 참고하세요.
 
 ### 간단한 튜토리얼
 
@@ -310,8 +310,8 @@ public final class HelloServer {
 **3. 컴파일하고 실행합니다.**
 
 ```bash
-javac --release 8 -cp core/build/libs/tinyhttpd-core-3.0.0.jar HelloServer.java
-java -cp ".:core/build/libs/tinyhttpd-core-3.0.0.jar" HelloServer
+javac --release 8 -cp core/build/libs/tinyhttpd-core-3.1.0.jar HelloServer.java
+java -cp ".:core/build/libs/tinyhttpd-core-3.1.0.jar" HelloServer
 ```
 
 다른 터미널에서 요청합니다.
@@ -326,7 +326,7 @@ curl --fail http://127.0.0.1:8080/
 **4. 정적 파일 서버를 실행합니다.** 앞의 서버를 종료한 뒤 실행하세요.
 
 ```bash
-java -cp "core/build/libs/tinyhttpd-core-3.0.0.jar:webserver/build/libs/tinyhttpd-webserver-3.0.0.jar" \
+java -cp "core/build/libs/tinyhttpd-core-3.1.0.jar:webserver/build/libs/tinyhttpd-webserver-3.1.0.jar" \
   com.snoworca.tinyhttpd.webserver.SimpleWebServer \
   -h 127.0.0.1 -p 8080 -d docs --listing
 ```

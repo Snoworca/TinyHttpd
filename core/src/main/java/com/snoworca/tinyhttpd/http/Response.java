@@ -144,6 +144,19 @@ public interface Response {
     void setCloseConnection(boolean close);
 
     /**
+     * Immediately cancels this exchange's transport, without generating an error response, flushing buffered data
+     * or finishing chunked framing. Unlike the other response methods, this operation is thread safe and may be
+     * called while another thread is blocked writing. Repeated calls are harmless; a completed exchange cannot
+     * cancel a later request on its reused connection. Subsequent writes and flushes fail with IOException.
+     *
+     * @throws UnsupportedOperationException when a legacy response implementation does not support cancellation
+     */
+    // @req FR-HTTP-003
+    default void abort() {
+        throw new UnsupportedOperationException("response transport cancellation is not supported");
+    }
+
+    /**
      * Sends a region of a file as the whole body and ends the response. Status and headers such as
      * {@code Content-Range} are the caller's; this sets {@code Content-Length: length}.
      *

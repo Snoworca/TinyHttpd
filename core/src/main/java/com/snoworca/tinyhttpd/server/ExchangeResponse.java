@@ -1,6 +1,7 @@
 package com.snoworca.tinyhttpd.server;
 
 import java.io.File;
+import java.io.FilterWriter;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -74,6 +75,9 @@ final class ExchangeResponse implements Response {
     boolean broken;
 
     boolean finished;
+
+    /** FR-HTTP-003: cancellation may be requested by a thread other than the owner. */
+    volatile boolean aborted;
 
     /** After sendError: further writes are ignored. */
     private boolean ignoreWrites;
@@ -339,7 +343,31 @@ final class ExchangeResponse implements Response {
             } else {
                 cs = Charset.forName(charset);
             }
-            writer = new OutputStreamWriter(body, cs);
+            writer = new FilterWriter(new OutputStreamWriter(body, cs)) {
+                @Override
+                public void write(int c) throws IOException {
+                    checkAborted();
+                    super.write(c);
+                }
+
+                @Override
+                public void write(char[] chars, int off, int len) throws IOException {
+                    checkAborted();
+                    super.write(chars, off, len);
+                }
+
+                @Override
+                public void write(String text, int off, int len) throws IOException {
+                    checkAborted();
+                    super.write(text, off, len);
+                }
+
+                @Override
+                public void flush() throws IOException {
+                    checkAborted();
+                    super.flush();
+                }
+            };
         }
         return writer;
     }
@@ -502,6 +530,7 @@ final class ExchangeResponse implements Response {
 
     /** Commits if needed and sends the buffered body; {@code last} also ends a chunked body. */
     void flushOut(boolean last) throws IOException {
+        checkAborted();
         ensureBuffer();
         byte[] head = committed ? null : commit(last);
         int start = HEAD_RESERVE;
@@ -573,7 +602,7 @@ final class ExchangeResponse implements Response {
 
     /** Ends the response normally: commits, sends the rest, ends chunked coding, checks the declared length. */
     void finish() throws IOException {
-        if (finished) {
+        if (finished || aborted) {
             return;
         }
         if (writer != null) {
@@ -591,10 +620,17 @@ final class ExchangeResponse implements Response {
         }
     }
 
-    /** Ends the response after a failure past the commit: no last chunk, so the client sees the truncation. */
-    void abort() {
-        finished = true;
-        conn.mustClose = true;
+    /** Cancels the transport without touching owner-thread buffers or waiting behind a socket writer. */
+    // @req FR-HTTP-003
+    @Override
+    public void abort() {
+        conn.abortResponse(this);
+    }
+
+    private void checkAborted() throws IOException {
+        if (aborted) {
+            throw new IOException("response aborted");
+        }
     }
 
     /** Commits now with unknown length for streaming responses (event streams). */
@@ -612,6 +648,7 @@ final class ExchangeResponse implements Response {
 
         @Override
         public void write(byte[] b, int off, int len) throws IOException {
+            checkAborted();
             if (ignoreWrites) {
                 return;
             }
@@ -652,6 +689,7 @@ final class ExchangeResponse implements Response {
 
         @Override
         public void flush() throws IOException {
+            checkAborted();
             if (finishing || finished || ignoreWrites) {
                 return;
             }
