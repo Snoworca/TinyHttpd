@@ -37,6 +37,8 @@ public final class ServerConfig {
     public final int port;
     public final InetAddress bindAddress;
     public final Handler handler;
+    /** FR-HTTP-004: immutable per server; STRICT unless explicitly selected otherwise. */
+    public final RequestTargetPolicy requestTargetPolicy;
     /** Filters in order; the host check comes first when enabled. */
     public final List<Filter> filters;
     public final ErrorHandler errorHandler;
@@ -93,6 +95,7 @@ public final class ServerConfig {
         port = b.port;
         bindAddress = b.bindAddress;
         handler = b.handler;
+        requestTargetPolicy = b.requestTargetPolicy;
         List<Filter> all = new ArrayList<Filter>(b.filters.size() + 1);
         if (b.hostCheck) {
             all.add(new HostAllowlistFilter(b.allowedHosts.toArray(new String[0])));

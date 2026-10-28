@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.1.1 - 2026-10-29
+
+## English
+
+TinyHttpd 3.1.1 adds an explicit request-target policy for frameworks such as NaruServe. Existing servers keep their strict defaults. Published 3.1.0 is unchanged.
+
+- Opt in with `TinyHttpd.builder().requestTargetPolicy(RequestTargetPolicy.RAW)`, using `com.snoworca.tinyhttpd.RequestTargetPolicy`.
+- RAW handlers read the original path and query through `getRequestURI()` and `getQueryString()`, preserving percent-escape spelling, repeated slashes and malformed encodings for framework-owned validation.
+- `getPath()` retains strict decoding and its existing source signature. Invalid RAW paths throw an unchecked `IllegalArgumentException`; before response commitment the engine answers 400, and after commitment it aborts without finishing the body.
+- Request-line, Host and HTTP body-framing validation remain enabled. Built-in decoded-path routing and static-file containment remain strict. WebSocket paths are validated before the listener factory and irreversible 101 upgrade.
+- No new dependencies. Java 8 bytecode and Android API 21 API checks remain required; physical Android device verification is separate.
+
+Use `com.snoworca:tinyhttpd-core:3.1.1` and optional TinyHttpd modules at the same version. RAW applications must validate paths before routing or filesystem access. The five modules provide binary, sources and Javadoc JARs; project and original NanoHttpd BSD notices are preserved.
+
+## 한국어
+
+TinyHttpd 3.1.1은 NaruServe 같은 프레임워크를 위한 명시적 요청 경로 정책을 추가합니다. 기존 서버의 엄격한 기본값과 배포된 3.1.0은 변경하지 않습니다.
+
+- `com.snoworca.tinyhttpd.RequestTargetPolicy`를 사용해 `.requestTargetPolicy(RequestTargetPolicy.RAW)`로 선택합니다.
+- RAW 핸들러는 `getRequestURI()`·`getQueryString()`으로 이스케이프 표기·중복 슬래시·잘못된 인코딩을 포함한 원본을 받아 직접 검증합니다.
+- `getPath()`의 엄격한 디코딩과 기존 소스 시그니처는 유지합니다. 잘못된 RAW 경로에는 unchecked `IllegalArgumentException`을 던지며, 엔진은 응답 확정 전에는 400을 보내고 확정 후에는 바디를 완료하지 않고 중단합니다.
+- 요청행·Host·HTTP 바디 framing 검사, 기본 라우터·정적 파일의 경로 격리는 유지합니다. WebSocket은 팩터리 호출과 101 업그레이드 전에 경로를 검증합니다.
+- 새 의존성을 추가하지 않습니다. Java 8 바이트코드·Android API 21 API 검사를 유지하며 실기기 검증은 별도입니다.
+
+`com.snoworca:tinyhttpd-core:3.1.1`과 같은 버전의 선택 모듈을 사용하십시오. RAW 애플리케이션은 라우팅·파일 접근 전에 경로를 검증해야 합니다. 5개 모듈의 바이너리·소스·Javadoc JAR에 프로젝트 및 원본 NanoHttpd BSD 고지를 보존합니다.
+
 ## 3.1.0 - 2026-10-24
 
 ## English

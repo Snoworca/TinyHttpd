@@ -347,6 +347,8 @@ final class Connection {
             }
         } catch (HttpException e) {
             error(res, e.getStatus(), e.getMessage(), e.getHeaders(), null);
+        } catch (InvalidRequestTargetException e) {
+            error(res, 400, e.getMessage(), null, null);
         } catch (IOException e) {
             ioFailure(ex, res, e);
         } catch (RuntimeException e) {

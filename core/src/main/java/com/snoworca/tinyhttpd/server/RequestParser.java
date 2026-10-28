@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import com.snoworca.tinyhttpd.ServerConfig;
+import com.snoworca.tinyhttpd.RequestTargetPolicy;
 
 /** Parses the request line and header (RFC 9112 §2-§6) and chooses the body framing. */
 final class RequestParser {
@@ -27,7 +28,7 @@ final class RequestParser {
         if (!hosts.isEmpty() && !validHost(hosts.get(0))) {
             throw new ParseError(400, "invalid Host");
         }
-        if (ex.path == null) {
+        if (ex.path == null && cfg.requestTargetPolicy == RequestTargetPolicy.STRICT) {
             throw new ParseError(400, "invalid path");
         }
         chooseFraming(conn, ex, cfg);

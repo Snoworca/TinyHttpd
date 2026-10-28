@@ -20,6 +20,9 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -35,7 +38,7 @@ import org.junit.Test;
 
 /**
  * P0-07 spike: how JVM sockets behave for the engine's acceptor/TLS/close choices. Results are recorded in
- * docs/research/socket-io.md; each test asserts what was observed on JDK 17.
+ * docs/research/socket-io.md; adaptor duplex assertions distinguish the observed JDK 17 and JDK 8 behavior.
  */
 public class SocketIoSpikeTest {
 
@@ -141,36 +144,63 @@ public class SocketIoSpikeTest {
         }
     }
 
-    /** (4) Full duplex on a channel socket's adaptor streams: a write proceeds while another thread is in read. */
+    /** (4) JDK 17 adaptors are full duplex; JDK 8 adaptors serialize read/write on the channel's blockingLock. */
+    // FR-HTTP-004 AC-7; OPS-HTTP-002 AC-2: this research spike is not the production ServerSocket transport.
     @Test
     public void channelSocketIsFullDuplex() throws Exception {
-        final SocketChannel sc = acceptChannel();
-        final InputStream in = sc.socket().getInputStream();
-        Thread reader = new Thread(() -> {
-            try {
-                in.read();
-            } catch (IOException ignored) {
-                // closed at the end of the test
+        try (final SocketChannel sc = acceptChannel()) {
+            final InputStream in = sc.socket().getInputStream();
+            AtomicInteger read = new AtomicInteger(-1);
+            AtomicReference<Throwable> failure = new AtomicReference<>();
+            Thread reader = new Thread(() -> {
+                try { read.set(in.read()); }
+                catch (IOException ignored) { /* JDK 17 reader is closed after duplex verification. */ }
+            });
+            Thread writer = new Thread(() -> {
+                try { sc.socket().getOutputStream().write(new byte[]{1, 2, 3}); }
+                catch (Throwable e) { failure.set(e); }
+            });
+            reader.setDaemon(true);
+            writer.setDaemon(true);
+            reader.start();
+            waitBlocked(reader);
+            writer.start();
+            if ("1.8".equals(System.getProperty("java.specification.version"))) {
+                // Positively observe the writer waiting for the reader's monitor, rather than timing a sleeping
+                // thread. Peer input must release that monitor and permit the exact outgoing bytes below.
+                long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(2);
+                boolean sharedLock = false;
+                while (System.nanoTime() < deadline) {
+                    ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(writer.getId());
+                    if (info != null && info.getThreadState() == Thread.State.BLOCKED
+                            && info.getLockOwnerId() == reader.getId()) {
+                        sharedLock = true;
+                        break;
+                    }
+                    Thread.sleep(5);
+                }
+                assertTrue("Java8 adaptor writer must wait for the reader's blockingLock", sharedLock);
+                assertTrue(reader.isAlive());
+                client.getOutputStream().write(9);
+                client.getOutputStream().flush();
+                reader.join(2000);
+                assertFalse("peer input must release the reader", reader.isAlive());
+                assertEquals(9, read.get());
             }
-        });
-        reader.setDaemon(true);
-        reader.start();
-        waitBlocked(reader);
-        Throwable t = run(() -> {
-            sc.socket().getOutputStream().write(new byte[]{1, 2, 3});
-            return null;
-        }, 2000);
-        assertEquals(null, t);
-        byte[] got = new byte[3];
-        int n = 0;
-        while (n < 3) {
-            n += client.getInputStream().read(got, n, 3 - n);
+            writer.join(2000);
+            assertFalse("adaptor write did not complete", writer.isAlive());
+            assertEquals(null, failure.get());
+            client.setSoTimeout(3000);
+            byte[] got = new byte[3];
+            new java.io.DataInputStream(client.getInputStream()).readFully(got);
+            assertArrayEquals(new byte[]{1, 2, 3}, got);
+            if (!"1.8".equals(System.getProperty("java.specification.version"))) {
+                assertTrue("JDK17 write must complete while read is still blocked", reader.isAlive());
+            }
+            sc.close();
+            reader.join(2000);
+            assertFalse(reader.isAlive());
         }
-        assertArrayEquals(new byte[]{1, 2, 3}, got);
-        assertTrue(reader.isAlive());
-        sc.close();
-        reader.join(2000);
-        assertFalse(reader.isAlive());
     }
 
     // ---- helpers

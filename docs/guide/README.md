@@ -2,8 +2,8 @@
 
 | Language / 언어 | Guide / 가이드 |
 |---|---|
-| English | [TinyHttpd 3.1.0 user guide](en.md) |
-| 한국어 | [TinyHttpd 3.1.0 사용 가이드](ko.md) |
+| English | [TinyHttpd 3.1.1 user guide](en.md) |
+| 한국어 | [TinyHttpd 3.1.1 사용 가이드](ko.md) |
 
 Both editions cover the same runnable example, Maven Central installation, routing, files, multipart uploads, SSE, WebSocket, sessions, TLS, Android integration, and migration from NanoHttpd.
 

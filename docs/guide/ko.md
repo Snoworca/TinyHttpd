@@ -1,6 +1,6 @@
 [English](en.md) | [한국어](ko.md) | [README](../../README.md)
 
-# TinyHttpd 3.1.0 사용 가이드
+# TinyHttpd 3.1.1 사용 가이드
 
 로컬 HTTP 서비스를 만든 뒤 폼, 파일 전송, SSE, WebSocket, 세션, TLS를 추가합니다. JVM·Android 앱에 TinyHttpd를 탑재하려는 Java 개발자를 위한 문서입니다. 명령은 macOS/Linux의 Bash 기준이며 JDK 17과 인터넷 연결이 필요합니다. 라이브러리는 Java 8 바이트코드를 사용하고 Android API 21 시그니처로 API 호환성을 검사합니다. Android 실기기 검증은 아직 진행 전입니다.
 
@@ -8,7 +8,7 @@ TinyHttpd는 NanoHttpd의 개발 커밋 `efb2ebf`(`2.3.2-SNAPSHOT`, 2019-07-03)�
 
 ## 1. 설치와 모듈 선택
 
-Maven Central에서 groupId `com.snoworca`, 버전 `3.1.0`으로 제공합니다. 선택 모듈은 코어를 전이 의존성으로 가져옵니다. 이 예제는 5개 모듈을 모두 사용하며, 최소 서버에는 `tinyhttpd-core`만 있으면 됩니다.
+Maven Central에서 groupId `com.snoworca`, 버전 `3.1.1`으로 제공합니다. 선택 모듈은 코어를 전이 의존성으로 가져옵니다. 이 예제는 5개 모듈을 모두 사용하며, 최소 서버에는 `tinyhttpd-core`만 있으면 됩니다.
 
 | 모듈 | 기능 |
 |---|---|
@@ -38,11 +38,11 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.snoworca:tinyhttpd-core:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-router:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-webserver:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-websocket:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-session:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-core:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-router:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-webserver:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-session:3.1.1'
 }
 
 java {
@@ -225,7 +225,7 @@ curl --fail -H 'Origin: http://127.0.0.1:8080' \
 | API | 동작 |
 |---|---|
 | `getRequestURI()` | 쿼리를 제외한 원시 경로 |
-| `getPath()` | 디코딩된 경로. 잘못된 이스케이프·인코딩된 슬래시·점 세그먼트는 핸들러 실행 전에 거부 |
+| `getPath()` | 엄격하게 디코딩한 경로. STRICT는 실행 전, RAW는 이 접근자를 호출할 때 검증 |
 | `getQueryParameter(name)` | 첫 쿼리 값. 바디는 읽지 않음 |
 | `readForm(maxBytes)` | URL 인코딩 폼. 값 목록을 담은 맵 반환 |
 | `getInputStream()` / `readMultipart(limits)` | 바디를 읽는 다른 방식 |
@@ -234,6 +234,8 @@ curl --fail -H 'Origin: http://127.0.0.1:8080' \
 한 요청에서는 바디 읽기 방식을 하나만 선택합니다. 응답도 writer와 output stream을 섞지 마세요. Content-Length·청크 프레이밍과 연결 재사용은 엔진이 관리하므로 Transfer-Encoding을 직접 지정하지 않습니다. 응답이 커밋되기 전에는 `throw new HttpException(status, message)`나 `response.sendError(...)`로 오류를 보낼 수 있습니다.
 
 하나의 핸들러가 요청을 동시에 처리합니다. 공유 상태는 스레드 안전하게 관리하고 Request·Response는 소유 스레드에서 사용하세요. 필터가 `chain.doFilter(...)`를 호출하지 않으면 처리가 거기서 끝납니다. 라우트와 필터는 서비스를 시작하기 전에 등록하세요. 라우터는 HEAD를 GET으로 처리하고, 경로는 있지만 메서드가 다르면 Allow 헤더와 405를 반환합니다.
+
+프레임워크 연동 시 `TinyHttpd.builder().requestTargetPolicy(com.snoworca.tinyhttpd.RequestTargetPolicy.RAW)`를 명시적으로 선택할 수 있습니다(3.1.1 이상). 이 모드의 `getRequestURI()`·`getQueryString()`은 `%2F`, `%00`, 점 세그먼트, 잘못된 이스케이프, 중복 슬래시를 포함한 원본 경로·쿼리를 보존하므로 프레임워크가 라우팅·검증을 담당합니다. 기본값은 `STRICT`입니다. `getPath()`는 여전히 엄격히 디코딩하며 잘못된 경로에는 unchecked `IllegalArgumentException`을 던집니다. 엔진은 응답 확정 전에는 400을 보내고, 이미 확정한 응답은 중단합니다. 기본 라우터·정적 파일의 경로 격리·WebSocket 경로 검증은 유지하며 HTTP 요청행·Host·바디 framing 검사도 두 모드 모두 적용합니다. 원본 경로는 라우팅·파일 접근 전에 검증하십시오.
 
 ## 4. 파일 다운로드와 업로드
 
@@ -383,7 +385,7 @@ Android 앱이 HTTP 클라이언트도 포함한다면 그 앱의 평문·TLS �
 
 ## 9. NanoHttpd에서 이식
 
-| NanoHttpd 사용 방식 | TinyHttpd 3.1.0 |
+| NanoHttpd 사용 방식 | TinyHttpd 3.1.1 |
 |---|---|
 | 서버를 상속하고 `serve(...)` 재정의 | `Handler`와 필요 시 `Router`를 지정해 서버 구성 |
 | `newFixedLengthResponse(...)` | 상태·타입을 지정하고 `Response.getWriter()` 또는 `getOutputStream()`에 쓰기 |
@@ -392,7 +394,7 @@ Android 앱이 HTTP 클라이언트도 포함한다면 그 앱의 평문·TLS �
 | 요청 가로채기 | `Filter`를 등록하고 계속 처리하려면 `chain.doFilter(...)` 호출 |
 | 파일 전체 버퍼링 | `StaticFileHandler`, `FileResponses.serve(...)`, `Response.sendFile(...)` 사용 |
 
-코어는 Servlet 컨테이너가 아니며 servlet JAR에 의존하지 않습니다. 파라미터·문자셋 기본값·제공하지 않는 컨테이너 기능은 [Servlet API와 다른 점](../api/servlet-differences.md)을 참고하세요. 3.1.0은 TinyHttpd의 버전이며 원본 NanoHttpd의 릴리스라고 주장하지 않습니다.
+코어는 Servlet 컨테이너가 아니며 servlet JAR에 의존하지 않습니다. 파라미터·문자셋 기본값·제공하지 않는 컨테이너 기능은 [Servlet API와 다른 점](../api/servlet-differences.md)을 참고하세요. 3.1.1은 TinyHttpd의 버전이며 원본 NanoHttpd의 릴리스라고 주장하지 않습니다.
 
 ## 10. 문제 해결과 재배포
 

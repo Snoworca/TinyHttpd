@@ -1,6 +1,6 @@
 [English](en.md) | [한국어](ko.md) | [README](../../README.md)
 
-# TinyHttpd 3.1.0 user guide
+# TinyHttpd 3.1.1 user guide
 
 Build a local HTTP service, then add forms, file transfer, SSE, WebSocket, sessions, and TLS. This guide targets Java developers embedding TinyHttpd in JVM or Android applications. Commands use Bash on macOS/Linux; JDK 17 and an internet connection are required for the walkthrough. The library uses Java 8 bytecode and checks its platform APIs against Android API 21. Physical-device validation remains pending.
 
@@ -8,7 +8,7 @@ TinyHttpd independently continues NanoHttpd from development commit `efb2ebf` (`
 
 ## 1. Install and choose modules
 
-All coordinates use group `com.snoworca` and version `3.1.0` on Maven Central. Optional modules bring the core transitively. The walkthrough uses all five; a minimal server needs only `tinyhttpd-core`.
+All coordinates use group `com.snoworca` and version `3.1.1` on Maven Central. Optional modules bring the core transitively. The walkthrough uses all five; a minimal server needs only `tinyhttpd-core`.
 
 | Module | Provides |
 |---|---|
@@ -38,11 +38,11 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.snoworca:tinyhttpd-core:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-router:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-webserver:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-websocket:3.1.0'
-    implementation 'com.snoworca:tinyhttpd-session:3.1.0'
+    implementation 'com.snoworca:tinyhttpd-core:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-router:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-webserver:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-websocket:3.1.1'
+    implementation 'com.snoworca:tinyhttpd-session:3.1.1'
 }
 
 java {
@@ -225,7 +225,7 @@ curl --fail -H 'Origin: http://127.0.0.1:8080' \
 | API | Contract |
 |---|---|
 | `getRequestURI()` | Raw path without query |
-| `getPath()` | Decoded path; invalid escapes, encoded slashes, and dot segments are rejected before the handler |
+| `getPath()` | Strictly decoded path; STRICT rejects invalid paths before dispatch; RAW validates when this accessor is called |
 | `getQueryParameter(name)` | First query value; never reads the body |
 | `readForm(maxBytes)` | URL-encoded form; returns a map of lists |
 | `getInputStream()` / `readMultipart(limits)` | Alternative ways to consume the body |
@@ -234,6 +234,8 @@ curl --fail -H 'Origin: http://127.0.0.1:8080' \
 Choose one body reader per request. Choose either response writer or output stream; do not mix them. The engine owns Content-Length/chunked framing and connection reuse, so do not set Transfer-Encoding yourself. Use `throw new HttpException(status, message)` or `response.sendError(...)` for errors before the response commits.
 
 One handler instance serves requests concurrently. Keep shared state thread safe and use each Request/Response on its owner thread. A filter stops the chain if it does not call `chain.doFilter(...)`. Register routes and filters before serving. The router handles HEAD via GET and answers 405 with Allow when the path exists for another method.
+
+Framework integrations may explicitly select `TinyHttpd.builder().requestTargetPolicy(com.snoworca.tinyhttpd.RequestTargetPolicy.RAW)` (3.1.1+). In that mode, `getRequestURI()` and `getQueryString()` preserve the original path/query, including `%2F`, `%00`, dot segments, malformed escapes and repeated slashes, so the framework can apply its own routing and validation. The default is `STRICT`. `getPath()` still decodes strictly and throws an unchecked `IllegalArgumentException` for an invalid path; the engine sends 400 before response commitment or aborts a committed response. Built-in decoded-path routers, static-file containment and WebSocket path validation stay strict. HTTP request-line, Host and body-framing validation remain enabled in both policies. Validate raw paths before routing or filesystem access.
 
 ## 4. Download and upload files
 
@@ -383,7 +385,7 @@ If an Android app is also an HTTP client, its cleartext/TLS policy is separate f
 
 ## 9. Migrate from NanoHttpd
 
-| NanoHttpd pattern | TinyHttpd 3.1.0 |
+| NanoHttpd pattern | TinyHttpd 3.1.1 |
 |---|---|
 | Subclass the server and override `serve(...)` | Build `TinyHttpd` with a `Handler`, optionally a `Router` |
 | `newFixedLengthResponse(...)` | Set status/type, then write to `Response.getWriter()` or `getOutputStream()` |
@@ -392,7 +394,7 @@ If an Android app is also an HTTP client, its cleartext/TLS policy is separate f
 | Intercept requests | Register `Filter` implementations and call `chain.doFilter(...)` to continue |
 | Whole-file buffering | `StaticFileHandler`, `FileResponses.serve(...)`, or `Response.sendFile(...)` |
 
-The core is not a Servlet container and does not require a servlet JAR. See [Servlet API differences](../api/servlet-differences.en.md) for request parameters, charset defaults, and unavailable container features. Version 3.1.0 belongs to TinyHttpd and does not claim to be an upstream NanoHttpd release.
+The core is not a Servlet container and does not require a servlet JAR. See [Servlet API differences](../api/servlet-differences.en.md) for request parameters, charset defaults, and unavailable container features. Version 3.1.1 belongs to TinyHttpd and does not claim to be an upstream NanoHttpd release.
 
 ## 10. Troubleshoot and redistribute
 

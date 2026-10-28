@@ -36,10 +36,14 @@ public interface Request {
     boolean isSecure();
 
     /**
-     * The decoded, normalized path. Dot segments, encoded slashes, NUL and invalid escapes were rejected with 400
-     * before the handler ran, and empty segments are merged. {@code +} stays {@code +}.
+     * The strictly decoded, normalized path; empty segments are merged and {@code +} stays {@code +}. With the
+     * default STRICT request-target policy, invalid paths are rejected with 400 before dispatch. With the opt-in
+     * RAW policy, raw accessors can expose such a path, but this decoded accessor still rejects dot segments,
+     * encoded slashes, NUL, malformed escapes and invalid UTF-8. The engine answers 400 if its validation exception
+     * escapes the handler before response commitment.
      *
      * @return the decoded path, starting with {@code /}
+     * @throws IllegalArgumentException when a RAW request target cannot be decoded safely
      */
     String getPath();
 

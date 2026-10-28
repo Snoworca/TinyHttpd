@@ -128,6 +128,9 @@ final class Exchange implements Request {
 
     @Override
     public String getPath() {
+        if (path == null) {
+            throw new InvalidRequestTargetException();
+        }
         return path;
     }
 

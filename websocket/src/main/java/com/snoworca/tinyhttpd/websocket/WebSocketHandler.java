@@ -125,6 +125,9 @@ public class WebSocketHandler implements Handler {
         if (!originAllowed(req)) {
             throw new HttpException(403, "origin not allowed");
         }
+        // FR-HTTP-004: the handshake snapshot consumes the decoded path; validate before factory side effects
+        // and the irreversible 101 response, including when the listener admits raw request targets.
+        req.getPath();
         WebSocketListener listener = factory.create(req);
         if (listener == null) {
             throw new HttpException(403, "refused");

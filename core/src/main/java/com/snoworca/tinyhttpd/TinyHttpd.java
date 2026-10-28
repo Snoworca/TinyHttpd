@@ -250,6 +250,7 @@ public final class TinyHttpd {
         int port;
         InetAddress bindAddress;
         Handler handler;
+        RequestTargetPolicy requestTargetPolicy = RequestTargetPolicy.STRICT;
         final List<Filter> filters = new ArrayList<Filter>();
         ErrorHandler errorHandler = ErrorHandler.PLAIN;
         TinyLog logger = TinyLog.jul("com.snoworca.tinyhttpd");
@@ -352,6 +353,25 @@ public final class TinyHttpd {
          */
         public Builder handler(Handler handler) {
             this.handler = handler;
+            return this;
+        }
+
+        /**
+         * Selects path-validation ownership. STRICT (default) rejects invalid decoded paths before dispatch. RAW
+         * delivers the original path/query to framework handlers, while getPath and built-in decoded-path consumers
+         * remain strict. HTTP syntax, Host and body framing validation are always enforced.
+         *
+         * @param policy request-target policy
+         * @return this builder
+         * @throws NullPointerException when policy is null
+         * @since 3.1.1
+         */
+        // @req FR-HTTP-004
+        public Builder requestTargetPolicy(RequestTargetPolicy policy) {
+            if (policy == null) {
+                throw new NullPointerException("requestTargetPolicy");
+            }
+            this.requestTargetPolicy = policy;
             return this;
         }
 

@@ -3,7 +3,7 @@
 ## JVM
 
 - 재현 코드: `core/src/test/java/com/snoworca/tinyhttpd/junit/spike/SocketIoSpikeTest.java` (기본 `test`에 포함, 약 2초). 각 테스트는 관찰한 동작을 단언한다.
-- 환경(2026-10-18): macOS 26.2, Homebrew OpenJDK 17.0.20.1. **JDK 8은 설치되어 있지 않아 확인하지 못했다**(`/usr/libexec/java_home -V`에 없음). 특히 전이중(4)은 JDK 8 `SocketAdaptor`에서 다를 수 있으니 JDK 8과 Android(P5-04, P10)에서 다시 확인한다.
+- 환경(2026-10-18): macOS 26.2, Homebrew OpenJDK 17.0.20.1. **당시 JDK 8은 설치되어 있지 않아 확인하지 못했다**(`/usr/libexec/java_home -V`에 없음). 특히 전이중(4)은 JDK 8 `SocketAdaptor`에서 다를 수 있으니 JDK 8과 Android(P5-04, P10)에서 다시 확인한다.
 
 | 항목 | JDK 17 결과 | JDK 8 | 테스트 |
 |---|---|---|---|
@@ -21,3 +21,11 @@
 
 - 엔진은 `ServerSocket`을 유지한다. `sendFile`은 서버 공유 풀(64 KB × 8)의 버퍼로 복사한다(`server/FileTransfer.java`). TLS는 어차피 복사가 필요하고, JVM 측정에서 복사 경로로도 다운로드 4개 동시 약 2.9 GB/s가 나왔다(baseline.md).
 - `transferTo`(채널 소켓) 전환은 Android 실기기 확인(AND-05: soTimeout, close로 깨우기, sendfile 이득) 뒤 다시 판단한다.
+
+## Java 8 follow-up (2026-10-29)
+
+Requirements: FR-HTTP-004 AC-7; OPS-HTTP-002 AC-2.
+
+The RAW request-target release verification ran the full tests on Zulu 8u504. The existing `channelSocketIsFullDuplex` research spike failed because it assumed the JDK 17 adaptor implementation. Independent pure-JDK probes reproduced the runtime difference without TinyHttpd code: JDK 17 writes while the reader is blocked; Java 8 serializes adaptor reads and writes through the channel's `blockingLock`. The installed Java 8 `src.zip` confirms that `SocketAdaptor.SocketInputStream` and `Channels.writeFully` acquire the same monitor.
+
+The diagnostic test now retains the JDK 17 full-duplex assertion. On Java 8 it positively observes the writer BLOCKED on a monitor owned by the reader, sends a byte from the peer to release the read, then verifies the exact incoming byte and outgoing bytes. Both runtime-specific targeted tests passed. The accepted channel is closed on assertion failure as well. No production regression test is excluded and the production transport remains `ServerSocket`; this finding is not a RAW request-target regression.
