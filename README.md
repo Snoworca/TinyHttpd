@@ -23,9 +23,9 @@ A lightweight embedded HTTP server for Java and Android, built to keep memory us
 - **HTTP and live connections.** HTTP/1.1 keep-alive, chunked bodies, SSE, optional WebSocket support, and configurable TLS. SSE and upgraded connections have separate connection budgets.
 - **Compatibility and input checks.** Java 8 bytecode and Android 5.0/API 21 API checks, strict request parsing, configurable request limits, and a Host allowlist enabled by default.
 
-The current version is `3.1.1`. Android API compatibility is checked during the build; the physical-device validation plan remains open. Memory targets and benchmark results depend on the workload and platform. See the [measurement notes](docs/research/baseline.md) and [Android verification plan](docs/next/p10-android-verification.md).
+**Latest release: [3.1.1](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.1.1)** — available from Maven Central. See the [public artifact verification](docs/release/3.1.1-verification.md). Android API compatibility is checked during the build; the physical-device validation plan remains open. Memory targets and benchmark results depend on the workload and platform. See the [measurement notes](docs/research/baseline.md) and [Android verification plan](docs/next/p10-android-verification.md).
 
-Framework adapters can opt into original request-target handling with `.requestTargetPolicy(RequestTargetPolicy.RAW)` (3.1.1+). The default remains `STRICT`; decoded `getPath()`, static-file and WebSocket path validation remain strict. See the [request handling guide](docs/guide/en.md#3-handle-requests-routes-and-responses).
+For framework adapters that own path decoding and routing, see [original request-target handling](#framework-integration-311). For ordinary handlers, keep the default `STRICT` policy.
 
 ### Modules
 
@@ -90,7 +90,7 @@ Use **JDK 17** to build and run this tutorial, matching CI. The libraries compil
 **1. Build from source.**
 
 ```bash
-git clone https://github.com/Snoworca/TinyHttpd.git
+git clone --branch v3.1.1 --depth 1 https://github.com/Snoworca/TinyHttpd.git
 cd TinyHttpd
 ./gradlew build
 ```
@@ -147,10 +147,69 @@ java -cp "core/build/libs/tinyhttpd-core-3.1.1.jar:webserver/build/libs/tinyhttp
 
 Open `http://127.0.0.1:8080/` to browse `docs/`. Directory listing is opt-in via `--listing`.
 
+### Framework integration (3.1.1+)
+
+Choose `RAW` only when your framework owns path validation, decoding and routing. This lets adapters such as NaruServe inspect encoded separators or malformed escapes before deciding whether to reject a request.
+
+| Contract | `STRICT` (default) | `RAW` (opt-in) |
+|---|---|---|
+| Encoded slash or malformed escape, such as `/x/a%2Fb` or `/x/%ZZ` | 400 before the handler runs | Delivered to a handler using raw accessors |
+| `getRequestURI()` / `getQueryString()` | Original path / query for accepted targets | Original path / query, without decoding |
+| `getPath()` | Strictly decoded path | Same strict decoding; invalid paths throw `IllegalArgumentException` |
+| Request-line, Host and body-framing checks | Enforced | Enforced |
+| Built-in router, static files and WebSocket path checks | Strict | Strict |
+
+The path accessor excludes the query. The query accessor excludes `?` and returns `null` when no query is present. RAW preserves percent escapes, repeated slashes and literal `+`; it does not make `getPath()` a raw accessor.
+
+After building the release as above, stop the hello server and save this as `RawTargetServer.java`. This example echoes the original path/query; a framework must validate them before routing, decoding or filesystem access.
+
+```java
+import com.snoworca.tinyhttpd.RequestTargetPolicy;
+import com.snoworca.tinyhttpd.TinyHttpd;
+import java.net.InetAddress;
+
+public final class RawTargetServer {
+    public static void main(String[] args) throws Exception {
+        TinyHttpd server = TinyHttpd.builder()
+                .bindAddress(InetAddress.getByName("127.0.0.1"))
+                .port(8080)
+                .daemon(false)
+                .requestTargetPolicy(RequestTargetPolicy.RAW)
+                .handler((request, response) -> {
+                    String path = request.getRequestURI();
+                    String query = request.getQueryString();
+                    response.setContentType("text/plain; charset=UTF-8");
+                    response.getWriter().write(path + "\n" + (query == null ? "" : query) + "\n");
+                })
+                .build();
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
+        server.start();
+    }
+}
+```
+
+```bash
+javac --release 8 -cp core/build/libs/tinyhttpd-core-3.1.1.jar RawTargetServer.java
+java -cp ".:core/build/libs/tinyhttpd-core-3.1.1.jar" RawTargetServer
+```
+
+Send a request from another terminal:
+
+```bash
+curl --path-as-is --fail 'http://127.0.0.1:8080/x/a%2Fb?next=%2F+ok'
+# /x/a%2Fb
+# next=%2F+ok
+```
+
+The default STRICT policy rejects this encoded slash with 400. In RAW mode, the echo handler receives it unchanged. Calling `getPath()` still rejects an invalid decoded path: an uncaught validation failure produces 400 before the response is committed, or aborts an already committed response. Validate before writing response data. Ordinary application `IllegalArgumentException`s remain server errors (500).
+
+See the [request handling guide](docs/guide/en.md#3-handle-requests-routes-and-responses) for the accessor contract, and the [3.1.1 verification report](docs/release/3.1.1-verification.md) for HTTP/TLS, Java 8 and public Maven artifact checks.
+
 ### Selected defaults
 
 | Setting | Default |
 |---|---|
+| Request-target policy | `STRICT`; framework adapters can explicitly select `RAW` |
 | Input / output buffer | 8 KiB / 8 KiB |
 | Maximum workers / ordinary connections | 64 / 128 |
 | Maximum ordinary connections per address | 32 |
@@ -171,6 +230,7 @@ Use API 21 or later and declare `android.permission.INTERNET` in the host app. S
 
 | Symptom | What to do |
 |---|---|
+| Encoded path receives HTTP 400 before the handler runs | STRICT rejects unsafe decoded paths. Framework adapters that validate raw paths can explicitly select `RAW`; built-in decoded-path consumers remain strict. |
 | `Address already in use` | Stop the process using port 8080 or choose another port with `.port(...)` / `-p`. |
 | Standalone app exits immediately | Use `.daemon(false)` or keep an application-owned thread alive. |
 | Custom hostname receives HTTP 421 | Add the hostname with `allowedHosts("nas.example")`. |
@@ -213,9 +273,9 @@ TinyHttpd는 메모리 사용량 관리와 안정적인 대용량 파일 스트�
 - **HTTP와 실시간 연결.** HTTP/1.1 keep-alive, 청크 전송, SSE, 선택 모듈의 WebSocket, 설정 가능한 TLS를 제공합니다. SSE와 업그레이드 연결은 별도의 연결 예산으로 관리합니다.
 - **호환성과 입력 검사.** Java 8 바이트코드와 Android 5.0/API 21 API 검사를 적용합니다. 엄격한 요청 파싱, 설정 가능한 요청 제한, 기본 활성화된 Host 허용 목록을 제공합니다.
 
-현재 버전은 `3.1.1`입니다. Android API 호환성은 빌드에서 검사하며, 실기기 검증 계획은 아직 진행 전입니다. 메모리 목표치와 벤치마크 결과는 환경·작업 부하에 따라 달라집니다. [측정 자료](docs/research/baseline.md)와 [Android 검증 계획](docs/next/p10-android-verification.md)을 참고하세요.
+**최신 릴리스: [3.1.1](https://github.com/Snoworca/TinyHttpd/releases/tag/v3.1.1)** — Maven Central에서 받을 수 있습니다. [공개 아티팩트 검증 결과](docs/release/3.1.1-verification.md)를 확인하세요. Android API 호환성은 빌드에서 검사하며, 실기기 검증 계획은 아직 진행 전입니다. 메모리 목표치와 벤치마크 결과는 환경·작업 부하에 따라 달라집니다. [측정 자료](docs/research/baseline.md)와 [Android 검증 계획](docs/next/p10-android-verification.md)을 참고하세요.
 
-프레임워크 어댑터는 `.requestTargetPolicy(RequestTargetPolicy.RAW)`로 원본 요청 경로를 직접 처리할 수 있습니다(3.1.1 이상). 기본값 `STRICT`, 디코딩 접근자·정적 파일·WebSocket의 엄격한 경로 검증은 유지합니다. [요청 처리 가이드](docs/guide/ko.md#3-요청라우팅응답-처리)를 참고하세요.
+경로 디코딩과 라우팅을 직접 담당하는 프레임워크 어댑터는 [원본 요청 경로 처리](#framework-integration-ko)를 참고하세요. 일반 핸들러는 기본 `STRICT` 정책을 사용하세요.
 
 ### 모듈
 
@@ -280,7 +340,7 @@ CI와 같은 **JDK 17**로 빌드하고 예제를 실행합니다. 라이브러�
 **1. 소스를 받아 빌드합니다.**
 
 ```bash
-git clone https://github.com/Snoworca/TinyHttpd.git
+git clone --branch v3.1.1 --depth 1 https://github.com/Snoworca/TinyHttpd.git
 cd TinyHttpd
 ./gradlew build
 ```
@@ -337,10 +397,71 @@ java -cp "core/build/libs/tinyhttpd-core-3.1.1.jar:webserver/build/libs/tinyhttp
 
 `http://127.0.0.1:8080/`에 접속하면 `docs/`를 탐색할 수 있습니다. 디렉터리 목록은 `--listing`을 지정할 때만 활성화됩니다.
 
+<a id="framework-integration-ko"></a>
+
+### 프레임워크 연동 (3.1.1 이상)
+
+프레임워크가 경로 검증·디코딩·라우팅을 직접 담당할 때 `RAW`를 선택하세요. NaruServe 같은 어댑터가 인코딩된 구분자나 잘못된 이스케이프를 직접 확인하고 요청을 거부할지 결정할 수 있습니다.
+
+| 동작 | `STRICT` (기본값) | `RAW` (명시적 선택) |
+|---|---|---|
+| `/x/a%2Fb`, `/x/%ZZ` 같은 인코딩된 슬래시·잘못된 이스케이프 | 핸들러 호출 전 400 | 원본 접근자를 사용하는 핸들러에 전달 |
+| `getRequestURI()` / `getQueryString()` | 허용된 요청의 원본 경로 / 쿼리 | 디코딩하지 않은 원본 경로 / 쿼리 |
+| `getPath()` | 엄격하게 디코딩한 경로 | 동일한 엄격한 디코딩. 잘못된 경로는 `IllegalArgumentException` 발생 |
+| 요청 행·Host·바디 프레이밍 검사 | 적용 | 적용 |
+| 내장 라우터·정적 파일·WebSocket 경로 검사 | 엄격한 검사 | 엄격한 검사 |
+
+경로 접근자는 쿼리를 제외합니다. 쿼리 접근자는 `?`를 제외하며 쿼리가 없으면 `null`을 반환합니다. RAW는 퍼센트 이스케이프·연속 슬래시·리터럴 `+`를 보존합니다. `getPath()`는 계속 디코딩 접근자입니다.
+
+위 순서대로 릴리스를 빌드한 뒤 hello 서버를 종료하고 다음을 `RawTargetServer.java`로 저장하세요. 이 예제는 원본 경로·쿼리를 그대로 응답합니다. 실제 프레임워크는 라우팅·디코딩·파일 접근 전에 해당 값을 검증해야 합니다.
+
+```java
+import com.snoworca.tinyhttpd.RequestTargetPolicy;
+import com.snoworca.tinyhttpd.TinyHttpd;
+import java.net.InetAddress;
+
+public final class RawTargetServer {
+    public static void main(String[] args) throws Exception {
+        TinyHttpd server = TinyHttpd.builder()
+                .bindAddress(InetAddress.getByName("127.0.0.1"))
+                .port(8080)
+                .daemon(false)
+                .requestTargetPolicy(RequestTargetPolicy.RAW)
+                .handler((request, response) -> {
+                    String path = request.getRequestURI();
+                    String query = request.getQueryString();
+                    response.setContentType("text/plain; charset=UTF-8");
+                    response.getWriter().write(path + "\n" + (query == null ? "" : query) + "\n");
+                })
+                .build();
+        Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
+        server.start();
+    }
+}
+```
+
+```bash
+javac --release 8 -cp core/build/libs/tinyhttpd-core-3.1.1.jar RawTargetServer.java
+java -cp ".:core/build/libs/tinyhttpd-core-3.1.1.jar" RawTargetServer
+```
+
+다른 터미널에서 요청하세요.
+
+```bash
+curl --path-as-is --fail 'http://127.0.0.1:8080/x/a%2Fb?next=%2F+ok'
+# /x/a%2Fb
+# next=%2F+ok
+```
+
+기본 STRICT 정책은 이 인코딩된 슬래시를 400으로 거부합니다. RAW 예제 핸들러는 원본 그대로 받습니다. `getPath()`를 호출하면 잘못된 디코딩 경로는 여전히 거부됩니다. 검증 예외를 처리하지 않으면 응답 확정 전에는 400을 반환하고, 확정 후에는 연결을 중단합니다. 응답 데이터를 쓰기 전에 검증하세요. 일반 애플리케이션의 `IllegalArgumentException`은 서버 오류(500)로 처리합니다.
+
+접근자 계약은 [요청 처리 가이드](docs/guide/ko.md#3-요청라우팅응답-처리), HTTP·TLS·Java 8·실제 Maven 공개 파일 검증 결과는 [3.1.1 검증 보고서](docs/release/3.1.1-verification.md)를 참고하세요.
+
 ### 주요 기본값
 
 | 설정 | 기본값 |
 |---|---|
+| 요청 경로 정책 | `STRICT`. 프레임워크 어댑터는 `RAW`를 명시적으로 선택 가능 |
 | 입력 / 출력 버퍼 | 8 KiB / 8 KiB |
 | 최대 워커 / 일반 연결 | 64 / 128 |
 | 주소당 최대 일반 연결 | 32 |
@@ -361,6 +482,7 @@ API 21 이상을 사용하고 호스트 앱에 `android.permission.INTERNET`을 
 
 | 증상 | 해결 방법 |
 |---|---|
+| 인코딩된 경로가 핸들러 호출 전에 HTTP 400을 받음 | STRICT의 경로 검사입니다. 원본 경로를 직접 검증하는 프레임워크 어댑터는 `RAW`를 선택할 수 있습니다. 내장 디코딩 경로 소비자의 검사는 유지됩니다. |
 | `Address already in use` | 8080 포트를 사용하는 프로세스를 종료하거나 `.port(...)` / `-p`로 포트를 바꿉니다. |
 | 독립 실행 앱이 바로 종료됨 | `.daemon(false)`를 사용하거나 앱이 관리하는 스레드를 유지합니다. |
 | 사용자 지정 호스트 이름에서 HTTP 421 | `allowedHosts("nas.example")`로 이름을 추가합니다. |
